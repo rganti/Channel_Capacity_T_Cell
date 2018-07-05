@@ -1,11 +1,16 @@
 #!/usr/bin/python
-import numpy as np
+import argparse
+
 import matplotlib.pyplot as plt
+import numpy as np
+
+from post_process import load
 
 
 class PlotOutputHist(object):
     def __init__(self):
-        pass
+        self.column_names = load("sample_0/column_names")
+        print(self.column_names)
 
     def compute_output(self):
         output_array = []
@@ -13,7 +18,10 @@ class PlotOutputHist(object):
             try:
                 trajectory = np.loadtxt("sample_{0}/mean_traj".format(i))
                 if len(trajectory.shape) == 1:
-                    output_array.append(trajectory[-1])
+                    if "C" and "D" in self.column_names[0]:
+                        output_array.append(trajectory[-1] + trajectory[-2])
+                    else:
+                        output_array.append(trajectory[-1])
                 else:
                     output_array.append(trajectory[-1, -1])
             except:
@@ -44,6 +52,11 @@ class PlotLigandHist(object):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Submitting job for calculating P(C0) as function of steps",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--self_foreign', action='store_true', default=False,
+                        help='Flag for setting type')
+    args = parser.parse_args()
 
     output = PlotOutputHist()
     output.plot_hist()
