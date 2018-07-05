@@ -2,7 +2,6 @@
 import argparse
 import os
 import subprocess
-import time
 
 import numpy as np
 
@@ -86,29 +85,118 @@ class TwoWay(object):
         self.dictionary[value] = key
 
 
-class KineticProofreading(object):
+class BindingParameters(object):
     def __init__(self):
-        self.num_kp_steps = 1
-
         self.kappa = 0.0052
         self.k_off_foreign = 0.2
         self.k_off_self = 2.0
 
-        self.n_initial = {"R": 1000, "Lf": 500, "Ls": 500}
+
+class SelfWithForeign(object):
+    def __init__(self):
+        self.rate_constants = BindingParameters()
+
+        self.n_initial = {"R": 10000, "Lf": 100, "Ls": 0}
         self.record = ["Lf", "Ls", "C0", "D0"]
 
-        self.simulation_name = "kinetic_proofreading"
+        self.simulation_name = "kp_competing"
+
+        self.forward_rates = {"RLf": self.rate_constants.kappa, "RLs": self.rate_constants.kappa}
+        self.reverse_rates = {"C0": self.rate_constants.k_off_foreign, "D0": self.rate_constants.k_off_self}
+
+        self.forward_rxns = [[["R", "Lf"], ["C0"]], [["R", "Ls"], ["D0"]]]
+        self.reverse_rxns = [[["C0"], ["R", "Lf"]], [["D0"], ["R", "Ls"]]]
+
+        self.mu = 6
+        self.sigma = 1.0
+
+        self.p_ligand = [int(i) for i in np.round(np.random.lognormal(self.mu, self.sigma, 1000))]
+
+    def change_ligand_concentration(self, concentration):
+        self.n_initial["Ls"] = concentration
+
+
+class ForeignLigand(object):
+    def __init__(self):
+        self.rate_constants = BindingParameters()
+
+        self.inputs = ["R", "Lf"]
+        self.n_initial = {"R": 10000, "Lf": 0}
+        self.record = ["Lf", "C0"]
+        self.simulation_name = "kp_lf"
+
+        self.forward_rates = {"RLf": self.rate_constants.kappa}
+        self.reverse_rates = {"C0": self.rate_constants.k_off_foreign}
+
+        self.forward_rxns = [[["R", "Lf"], ["C0"]]]
+        self.reverse_rxns = [[["C0"], ["R", "Lf"]]]
+
+        self.symbol = "C"
+
+        self.mu = 20
+        self.sigma = 0.5
+
+        self.p_ligand = [int(i) for i in np.round(np.random.normal(self.mu, self.sigma, 1000))]
+
+    def change_ligand_concentration(self, concentration):
+        self.n_initial["Lf"] = concentration
+
+
+class SelfLigand(object):
+    def __init__(self):
+        self.rate_constants = BindingParameters()
+
+        self.inputs = ["R", "Ls"]
+        self.n_initial = {"R": 10000, "Ls": 0}
+        self.record = ["Ls", "D0"]
+        self.simulation_name = "kp_ls"
+
+        self.forward_rates = {"RLs": self.rate_constants.kappa}
+        self.reverse_rates = {"D0": self.rate_constants.k_off_self}
+
+        self.forward_rxns = [[["R", "Ls"], ["D0"]]]
+        self.reverse_rxns = [[["D0"], ["R", "Ls"]]]
+
+        self.symbol = "D"
+
+        self.mu = 6
+        self.sigma = 1.0
+
+        self.p_ligand = [int(i) for i in np.round(np.random.lognormal(self.mu, self.sigma, 1000))]
+
+    def change_ligand_concentration(self, concentration):
+        self.n_initial["Ls"] = concentration
+
+
+class KPSingleSpecies(object):
+    def __init__(self, foreign=False, self_foreign=False):
+        self.foreign_flag = foreign
+        self.self_foreign_flag = self_foreign
+
+        if self.foreign_flag:
+            self.ligand = ForeignLigand()
+        elif self.self_foreign_flag:
+            self.ligand = SelfWithForeign()
+        else:
+            self.ligand = SelfLigand()
 
         self.num_files = 100
         self.run_time = 100
         # self.time_step = 0.1
         self.time_step = 100
 
-        self.forward_rates = {"RLf": self.kappa, "RLs": self.kappa}
-        self.reverse_rates = {"C0": self.k_off_foreign, "D0": self.k_off_self}
+        self.home_directory = os.getcwd()
+        self.k_p = 0.05
 
-        self.forward_rxns = [[["R", "Lf"], ["C0"]], [["R", "Ls"], ["D0"]]]
-        self.reverse_rxns = [[["C0"], ["R", "Lf"]], [["D0"], ["R", "Ls"]]]
+        self.num_kp_steps = 1
+        self.forward_rates = self.ligand.forward_rates
+        self.forward_rxns = self.ligand.forward_rxns
+
+        self.reverse_rates = self.ligand.reverse_rates
+        self.reverse_rxns = self.ligand.reverse_rxns
+
+        self.record = self.ligand.record
+        self.num_samples = 1000
 
     @staticmethod
     def define_reactions(f, rxn, rate):
@@ -131,9 +219,9 @@ class KineticProofreading(object):
 
             f.write(input_string + rate_string + destroy_string + output_string + "\n")
 
-    def generate_ssc_script(self):
-        script_name = self.simulation_name + ".rxn"
-        shared = SharedCommands(self.n_initial, self.record, self.simulation_name + ".rxn")
+    def generate_ssc_script(self, simulation_name):
+        script_name = simulation_name + ".rxn"
+        shared = SharedCommands(self.ligand.n_initial, self.record, script_name)
 
         f = open(script_name, "w")
 
@@ -147,121 +235,69 @@ class KineticProofreading(object):
 
         f.close()
 
-    def generate_qsub(self):
+    def generate_qsub(self, simulation_name):
         q = open("qsub.sh", "w")
         q.write("#PBS -m ae\n")
         q.write("#PBS -q short\n")
         q.write("#PBS -V\n")
-        q.write("#PBS -l walltime=00:01:00,nodes=1:ppn=1 -N {0}\n\n".format(self.simulation_name))
+        q.write("#PBS -l walltime=00:01:00,nodes=1:ppn=1 -N {0}\n\n".format(simulation_name))
         q.write("cd $PBS_O_WORKDIR\n\n")
-        q.write("EXE_FILE={0}\n".format(self.simulation_name))
+        q.write("EXE_FILE={0}\n".format(simulation_name))
         q.write("RUN_TIME={0}\n".format(self.run_time))
         q.write("STEP={0}\n\n".format(self.time_step))
         q.write("for j in {1.." + str(self.num_files) + "}\n")
         q.write("do\n")
-        # q.write("\t ./$EXE_FILE -e $RUN_TIME -t $STEP > traj_$j\n")
-        q.write("\t ./$EXE_FILE -e $RUN_TIME > traj_$j\n")
+        if self.time_step == self.run_time:
+            q.write("\t ./$EXE_FILE -e $RUN_TIME > traj_$j\n")
+        else:
+            q.write("\t ./$EXE_FILE -e $RUN_TIME -t $STEP > traj_$j\n")
         q.write("done\n\n")
         q.write("python ~/SSC_python_modules/post_process.py --num_files {0} "
                 "--run_time {1} --time_step {2}\n".format(self.num_files, self.run_time, self.time_step))
         # q.write("python ~/SSC_python_modules/plot.py --steps {0}\n".format(self.num_kp_steps))
         q.close()
 
+    def generate(self, simulation_name):
+        self.generate_ssc_script(simulation_name)
+        compile_script(simulation_name + ".rxn")
+        self.generate_qsub(simulation_name)
 
-class ForeignLigand(KineticProofreading):
-    def __init__(self):
-        KineticProofreading.__init__(self)
-
-        self.inputs = ["R", "Lf"]
-        self.n_initial = {"R": 10000, "Lf": 0}
-        self.record = ["Lf", "C0"]
-        self.simulation_name = "kp_single_species"
-
-        self.forward_rates = {"RLf": self.kappa}
-        self.reverse_rates = {"C0": self.k_off_foreign}
-
-        self.forward_rxns = [[["R", "Lf"], ["C0"]]]
-        self.reverse_rxns = [[["C0"], ["R", "Lf"]]]
-
-        self.output_symbol = "C"
-
-        self.mu = 20
-        self.sigma = 0.5
-
-        self.p_ligand = [int(i) for i in np.round(np.random.normal(self.mu, self.sigma, 1000))]
-
-    def change_ligand_concentration(self, concentration):
-        self.n_initial["Lf"] = concentration
-
-
-class SelfLigand(KineticProofreading):
-    def __init__(self):
-        KineticProofreading.__init__(self)
-
-        self.inputs = ["R", "Ls"]
-        self.n_initial = {"R": 10000, "Ls": 0}
-        self.record = ["Ls", "D0"]
-        self.simulation_name = "kp_single_species"
-
-        self.forward_rates = {"RLs": self.kappa}
-        self.reverse_rates = {"D0": self.k_off_self}
-
-        self.forward_rxns = [[["R", "Ls"], ["D0"]]]
-        self.reverse_rxns = [[["D0"], ["R", "Ls"]]]
-
-        self.output_symbol = "D"
-
-        self.mu = 6
-        self.sigma = 1.0
-
-        self.p_ligand = [int(i) for i in np.round(np.random.lognormal(self.mu, self.sigma, 1000))]
-
-    def change_ligand_concentration(self, concentration):
-        self.n_initial["Ls"] = concentration
-
-
-class KPSingleSpecies(object):
-    def __init__(self, foreign=False):
-        if foreign:
-            self.ligand = ForeignLigand()
-        else:
-            self.ligand = SelfLigand()
-        self.home_directory = os.getcwd()
-
-        self.k_p = 0.05
-
-        self.num_kp_steps = self.ligand.num_kp_steps
-        self.forward_rates = self.ligand.forward_rates
-        self.forward_rxns = self.ligand.forward_rxns
-
-        self.reverse_rates = self.ligand.reverse_rates
-        self.reverse_rxns = self.ligand.reverse_rxns
-
-        self.symbol = self.ligand.output_symbol
-        self.inputs = self.ligand.inputs
-
-        self.record = self.ligand.record
-
-        self.num_samples = 1000
-
-    def generate(self):
-        self.ligand.generate_ssc_script()
-        compile_script(self.ligand.simulation_name + ".rxn")
-        self.ligand.generate_qsub()
-
-    def add_step(self):
+    def single_add_step(self):
         self.num_kp_steps += 1
         self.simulation_name = "kp_steps_" + str(self.num_kp_steps)
         print("Num KP steps = " + str(self.num_kp_steps))
 
-        self.forward_rates[self.symbol + "{0}".format(self.num_kp_steps - 2)] = self.k_p
-        self.forward_rxns.append([[self.symbol + "{0}".format(self.num_kp_steps - 2)],
-                                  [self.symbol + "{0}".format(self.num_kp_steps - 1)]])
+        self.forward_rates[self.ligand.symbol + "{0}".format(self.num_kp_steps - 2)] = self.k_p
+        self.forward_rxns.append([[self.ligand.symbol + "{0}".format(self.num_kp_steps - 2)],
+                                  [self.ligand.symbol + "{0}".format(self.num_kp_steps - 1)]])
 
-        self.reverse_rates[self.symbol + "{0}".format(self.num_kp_steps - 1)] = self.reverse_rates[self.symbol + "0"]
-        self.reverse_rxns.append([[self.symbol + "{0}".format(self.num_kp_steps - 1)], self.inputs])
+        self.reverse_rates[self.ligand.symbol + "{0}".format(self.num_kp_steps - 1)] = self.reverse_rates[
+            self.ligand.symbol + "0"]
+        self.reverse_rxns.append([[self.ligand.symbol + "{0}".format(self.num_kp_steps - 1)], self.ligand.inputs])
 
-        self.record.append(self.symbol + "{0}".format(self.num_kp_steps - 1))
+        self.record.append(self.ligand.symbol + "{0}".format(self.num_kp_steps - 1))
+
+    def competing_add_step(self):
+        self.num_kp_steps += 1
+        self.simulation_name = "kp_steps_" + str(self.num_kp_steps)
+        print("Num KP steps = " + str(self.num_kp_steps))
+        for i in ["C", "D"]:
+            self.forward_rates[i + "{0}".format(self.num_kp_steps - 2)] = self.k_p
+            self.forward_rxns.append([[i + "{0}".format(self.num_kp_steps - 2)],
+                                      [i + "{0}".format(self.num_kp_steps - 1)]])
+            if i == "C":
+                self.reverse_rates[i + "{0}".format(self.num_kp_steps - 1)] = self.ligand.rate_constants.k_off_foreign
+                self.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Lf"]])
+            elif i == "D":
+                self.reverse_rates[i + "{0}".format(self.num_kp_steps - 1)] = self.ligand.rate_constants.k_off_self
+                self.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Ls"]])
+            self.record.append(i + "{0}".format(self.num_kp_steps - 1))
+
+    def add_step(self):
+        if self.self_foreign_flag:
+            self.competing_add_step()
+        else:
+            self.single_add_step()
 
     def main_script(self, run=False):
         sample = []
@@ -270,22 +306,22 @@ class KPSingleSpecies(object):
             s = self.ligand.p_ligand[i]
             sample.append(s)
             self.ligand.change_ligand_concentration(s)
-            self.ligand.simulation_name = "kp_single_species_" + str(i)
+            simulation_name = self.ligand.simulation_name + "_" + str(i)
 
             os.makedirs(directory)
             print("Made " + directory)
             os.chdir(directory)
             print("Changed into directory: " + str(os.getcwd()))
 
-            self.generate()
+            self.generate(simulation_name)
             if run:
                 (stdout, stderr) = subprocess.Popen(["qsub {0}".format("qsub.sh")], shell=True, stdout=subprocess.PIPE,
                                                     cwd=os.getcwd()).communicate()
             os.chdir(self.home_directory)
-            time.sleep(0.1)
 
         np.savetxt("Ligand_concentrations", sample, fmt='%f')
         np.savetxt("Ligand_concentrations_sorted", np.sort(sample), fmt='%f')
+
 
 
 # class KPAddSteps(object):
@@ -320,42 +356,42 @@ class KPSingleSpecies(object):
 #         self.record.append(self.symbol + "{0}".format(self.num_kp_steps - 1))
 
 
-class KPMultiStep(KineticProofreading):
-    def __init__(self):
-        KineticProofreading.__init__(self)
-        self.k_p = 0.05
-
-    def add_step(self):
-        self.num_kp_steps += 1
-        self.simulation_name = "kp_steps_" + str(self.num_kp_steps)
-        print("Num KP steps = " + str(self.num_kp_steps))
-        for i in ["C", "D"]:
-            self.forward_rates[i + "{0}".format(self.num_kp_steps - 2)] = self.k_p
-            self.forward_rxns.append([[i + "{0}".format(self.num_kp_steps - 2)], [i + "{0}".format(self.num_kp_steps - 1)]])
-            if i == "C":
-                self.reverse_rates[i + "{0}".format(self.num_kp_steps - 1)] = self.k_off_foreign
-                self.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Lf"]])
-            elif i == "D":
-                self.reverse_rates[i + "{0}".format(self.num_kp_steps - 1)] = self.k_off_self
-                self.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Ls"]])
-            self.record.append(i + "{0}".format(self.num_kp_steps - 1))
-
-    def negative_feedback_loop(self):
-        if self.num_kp_steps == 3:
-            k_negative = 1.0
-            self.reverse_rxns += [[['C1', 'C0'], ['R', 'Lf']]]
-            self.reverse_rates['C1C0'] = k_negative
-
-            self.reverse_rxns += [[['D1', 'D0'], ['R', 'Ls']]]
-            self.reverse_rates['D1D0'] = k_negative
-
-    def positive_feedback_loop(self):
-        if self.num_kp_steps == 3:
-            self.forward_rxns += [[['C1', 'C2'], ['C2']]]
-            self.forward_rates['C1C2'] = 0.01
-
-            self.forward_rxns += [[['D1', 'D2'], ['D2']]]
-            self.forward_rates['D1D2'] = 0.01
+# class KPMultiStep(SelfWithForeign):
+#     def __init__(self):
+#         SelfWithForeign.__init__(self)
+#         self.k_p = 0.05
+#
+#     def add_step(self):
+#         self.num_kp_steps += 1
+#         self.simulation_name = "kp_steps_" + str(self.num_kp_steps)
+#         print("Num KP steps = " + str(self.num_kp_steps))
+#         for i in ["C", "D"]:
+#             self.forward_rates[i + "{0}".format(self.num_kp_steps - 2)] = self.k_p
+#             self.forward_rxns.append([[i + "{0}".format(self.num_kp_steps - 2)], [i + "{0}".format(self.num_kp_steps - 1)]])
+#             if i == "C":
+#                 self.reverse_rates[i + "{0}".format(self.num_kp_steps - 1)] = self.k_off_foreign
+#                 self.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Lf"]])
+#             elif i == "D":
+#                 self.reverse_rates[i + "{0}".format(self.num_kp_steps - 1)] = self.k_off_self
+#                 self.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Ls"]])
+#             self.record.append(i + "{0}".format(self.num_kp_steps - 1))
+#
+#     def negative_feedback_loop(self):
+#         if self.num_kp_steps == 3:
+#             k_negative = 1.0
+#             self.reverse_rxns += [[['C1', 'C0'], ['R', 'Lf']]]
+#             self.reverse_rates['C1C0'] = k_negative
+#
+#             self.reverse_rxns += [[['D1', 'D0'], ['R', 'Ls']]]
+#             self.reverse_rates['D1D0'] = k_negative
+#
+#     def positive_feedback_loop(self):
+#         if self.num_kp_steps == 3:
+#             self.forward_rxns += [[['C1', 'C2'], ['C2']]]
+#             self.forward_rates['C1C2'] = 0.01
+#
+#             self.forward_rxns += [[['D1', 'D2'], ['D2']]]
+#             self.forward_rates['D1D2'] = 0.01
 
 
 if __name__ == "__main__":
@@ -365,20 +401,15 @@ if __name__ == "__main__":
                         help='Flag for submitting simulations.')
     args = parser.parse_args()
 
-    if "foreign" in os.getcwd():
+    if "Ls_Lf" in os.getcwd():
+        kp = KPSingleSpecies(self_foreign=True)
+    elif "Lf" in os.getcwd():
         kp = KPSingleSpecies(foreign=True)
-    else:
+    elif "Ls" in os.getcwd():
         kp = KPSingleSpecies()
+    else:
+        raise Exception("Incorrect Directory labeling. Specify (Ls, Lf, Ls_Lf)")
+
     kp.add_step()
     kp.add_step()
     kp.main_script(run=args.run)
-
-
-    # kp_multistep = KPMultiStep()
-    # # kp_multistep.add_step()
-    # # kp_multistep.add_step()
-    # kp_multistep.generate_ssc_script()
-    # print("Number of steps = " + str(kp_multistep.num_kp_steps))
-    #
-    # compile_script(kp_multistep.simulation_name + ".rxn")
-    # kp_multistep.generate_qsub()
