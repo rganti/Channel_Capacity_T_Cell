@@ -3,8 +3,9 @@ import argparse
 
 import numpy as np
 from matplotlib import pyplot as plt
+
 from KP_analytical_tests import SimpleSecondOrder
-from two_species import KineticProofreading
+from two_species import SelfWithForeign
 
 
 def find_index(dummy_file, string):
@@ -147,8 +148,8 @@ class PlotSecondOrder(object):
     def plot_analytical(self):
         Lf = self.second_order.n_initial["Lf"]
         R = self.second_order.n_initial["R"]
-        kappa = self.second_order.kappa
-        k_off = self.second_order.k_off_foreign
+        kappa = self.second_order.rate_constants.kappa
+        k_off = self.second_order.rate_constants.k_off_foreign
 
         c_o = 0.5 * (-np.sqrt((-Lf - R - (k_off/kappa))**(2) - 4*Lf*R) + Lf + R + (k_off/kappa))
         print("c_o = " + str(c_o))
@@ -165,7 +166,7 @@ class MutualInformation(object):
     def __init__(self, kp_data, save=False):
         self.KP_data = kp_data
         self.save = save
-        self.KP = KineticProofreading()
+        self.KP = SelfWithForeign()
 
         self.Lf_initial = self.KP.n_initial["Lf"]
         print("Lf_initial = " + str(self.Lf_initial))
