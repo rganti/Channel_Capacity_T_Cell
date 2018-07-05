@@ -1,18 +1,18 @@
 #!/usr/bin/python
-from two_species import KineticProofreading, compile_script
+from two_species import SelfWithForeign, compile_script
 
 
-class SimpleSecondOrder(KineticProofreading):
+class SimpleSecondOrder(SelfWithForeign):
     def __init__(self):
-        KineticProofreading.__init__(self)
+        SelfWithForeign.__init__(self)
 
         self.n_initial = {"R": 1000, "Lf": 500}
         self.record = ["Lf", "C0"]
 
         self.simulation_name = "second_order"
 
-        self.forward_rates = {"RLf": self.kappa}
-        self.reverse_rates = {"C0": self.k_off_foreign}
+        self.forward_rates = {"RLf": self.rate_constants.kappa}
+        self.reverse_rates = {"C0": self.rate_constants.k_off_foreign}
 
         self.forward_rxns = [[["R", "Lf"], ["C0"]]]
         self.reverse_rxns = [[["C0"], ["R", "Lf"]]]
