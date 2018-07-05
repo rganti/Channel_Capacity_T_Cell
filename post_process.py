@@ -5,14 +5,11 @@ import re
 
 import numpy as np
 
-from two_species import KineticProofreading, KPMultiStep
-
 
 def load(filename):
     print("Loading data...")
-    data = map(lambda x: x, open(str(filename)).readlines())
+    data = list(map(lambda x: x, open(str(filename)).readlines()))
     return data
-
 
 def getcolumnames(data):
     columnames = re.sub('[#\[/\]]', '', data[0]).split()
