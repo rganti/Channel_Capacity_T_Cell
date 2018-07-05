@@ -1,5 +1,5 @@
 #!/usr/bin/python
-from two_species import SelfWithForeign, compile_script
+from two_species import SelfWithForeign
 
 
 class SimpleSecondOrder(SelfWithForeign):
@@ -21,10 +21,6 @@ class SimpleSecondOrder(SelfWithForeign):
 if __name__ == "__main__":
 
     second_order = SimpleSecondOrder()
-
-    second_order.generate_ssc_script()
-    compile_script(second_order.simulation_name + ".rxn")
-    second_order.generate_qsub()
 
 
 
