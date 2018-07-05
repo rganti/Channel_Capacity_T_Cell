@@ -1,16 +1,16 @@
 #!/usr/bin/python
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class InformationCapacity(object):
 
     def __init__(self, num_steps, self_directory="./", foreign_directory="./", estimator='fd', limiting='foreign'):
         self.num_steps = num_steps
-        self.foreign_output = np.loadtxt(foreign_directory + "L_foreign/output")
-        self.foreign_ligand = np.loadtxt(foreign_directory + "L_foreign/Ligand_concentrations")
-        self.self_output = np.loadtxt(self_directory + "L_self/output")
-        self.self_ligand = np.loadtxt(self_directory + "L_self/Ligand_concentrations")
+        self.foreign_output = np.loadtxt(foreign_directory + "output")
+        self.foreign_ligand = np.loadtxt(foreign_directory + "Ligand_concentrations")
+        self.self_output = np.loadtxt(self_directory + "output")
+        self.self_ligand = np.loadtxt(self_directory + "Ligand_concentrations")
 
         if limiting == 'foreign':
             self.limiting_output = self.foreign_output
