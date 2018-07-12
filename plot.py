@@ -4,7 +4,6 @@ import argparse
 import numpy as np
 from matplotlib import pyplot as plt
 
-from KP_analytical_tests import SimpleSecondOrder
 from two_species import SelfWithForeign
 
 
@@ -130,8 +129,6 @@ class PlotSecondOrder(object):
         self.column_names = load_columns(directory + "column_names")
         self.data = np.loadtxt(filename)
 
-        self.second_order = SimpleSecondOrder()
-
         self.time_index = find_index(self.column_names, "time")
         self.time = self.data[:, self.time_index]
 
@@ -142,8 +139,9 @@ class PlotSecondOrder(object):
         # self.CN = self.data[:, self.CN_index]
 
     def plot_concentrations(self):
-        for i in range(1, len(self.column_names)):
-            plt.plot(self.time, self.data[:, i], label=self.column_names[i], linestyle='-', marker='o')
+        # for i in range(1, len(self.column_names)):
+        plt.plot(self.time, self.data[:, -1], label=self.column_names[-1], linestyle='-', marker='o')
+        plt.plot(self.time, self.data[:, -2], label=self.column_names[-2], linestyle='-', marker='o')
 
     def plot_analytical(self):
         Lf = self.second_order.n_initial["Lf"]
