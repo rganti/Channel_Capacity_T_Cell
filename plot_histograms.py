@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+import os
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,10 +19,14 @@ class PlotOutputHist(object):
             try:
                 trajectory = np.loadtxt("sample_{0}/mean_traj".format(i))
                 if len(trajectory.shape) == 1:
-                    if "C" and "D" in self.column_names[0]:
+                    if "Ls_Lf" in os.getcwd():
+                        # if "C_" in self.column_names[0] and "D_" in self.column_names[0]:
+                        print("Self and Foreign")
+                        # print("C and D in column_names")
                         output_array.append(trajectory[-1] + trajectory[-2])
                     else:
                         output_array.append(trajectory[-1])
+                        print("Only Self")
                 else:
                     output_array.append(trajectory[-1, -1])
             except:
