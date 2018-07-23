@@ -180,100 +180,102 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         TcrSelfWithForeign.__init__(self, arguments=arguments)
 
         self.n_initial = {"R": 10000, "Lck": 10000, "Zap": 10000, "Lf": 20, "Ls": 0}
-        self.record = ["Lf", "Ls", "RLf", "RLs"]
+        self.record = ["Lf", "Ls"]
 
         self.simulation_name = "kp_competing"
 
         self.k_L_off = {"Lf": self.rate_constants.k_foreign_off, "Ls": self.rate_constants.k_self_off}
 
-        self.forward_rates = {"RLf": self.rate_constants.k_L_on, "RLs": self.rate_constants.k_L_on}
-        self.reverse_rates = {"RLf": self.rate_constants.k_foreign_off, "RLs": self.rate_constants.k_self_off}
+        self.forward_rates = {}
+        self.reverse_rates = {}
 
-        self.forward_rxns = [[["R", "Lf"], ["RLf"]], [["R", "Ls"], ["RLs"]]]
-        self.reverse_rxns = [[["RLf"], ["R", "Lf"]], [["RLs"], ["R", "Ls"]]]
+        self.forward_rxns = []
+        self.reverse_rxns = []
 
         self.output = ["Lf", "Ls"]
 
-    def add_to_network(self, f, reactants, products, rate):
-        f.write(" + ".join(reactants))
-        f.write("-> {0} ".format(rate))
-        f.write(" + ".join(products))
-        f.write("\n\n")
+    # def add_to_network(self, f, reactants, products, rate):
+    #     f.write(" + ".join(reactants))
+    #     f.write(" -> {0} ".format(rate))
+    #     f.write(" + ".join(products))
+    #     f.write("\n")
 
-    def modify_forward_reverse(self, reactants, products, forward_rate, reverse_rate, f):
-        self.forward_rates[''.join(reactants)] = forward_rate
+    def modify_forward_reverse(self, reactants, products, forward_rate, reverse_rate):
+        forward_key = ''.join(reactants) + '_' + ''.join(products)
+        self.forward_rates[forward_key] = forward_rate
         self.forward_rxns.append([reactants, products])
 
-        f.write("# Forward Step\n")
-        self.add_to_network(f, reactants, products, forward_rate)
+        # f.write("# Forward Step\n")
+        # self.add_to_network(f, reactants, products, forward_rate)
 
-        self.reverse_rates[''.join(products)] = reverse_rate
+        reverse_key = ''.join(products) + '_' + ''.join(reactants)
+        self.reverse_rates[reverse_key] = reverse_rate
         self.reverse_rxns.append([products, reactants])
 
-        f.write("# Reverse Step\n")
-        self.add_to_network(f, products, reactants, reverse_rate)
+        # f.write("# Reverse Step\n")
+        # self.add_to_network(f, products, reactants, reverse_rate)
 
-    def add_step_0(self, f):
+    def add_step_0(self):
+        # f.write("# Step 0\n")
         for i in self.output:
             self.modify_forward_reverse(["R", i], ["R" + i], self.rate_constants.k_L_on,
-                                        self.k_L_off[i], f)
+                                        self.k_L_off[i])
             self.record.append(''.join(["R" + i]))
+        # f.write("\n\n")
 
-    def add_cycle_1(self, f):
+    def add_cycle_1(self):
+        # f.write("# Cycle 1\n")
         self.increment_step()
         for i in self.output:
             self.modify_forward_reverse(["R" + i, "Lck"], ["R" + i + "_Lck"], self.rate_constants.k_lck_on_R_pmhc,
-                                        self.rate_constants.k_lck_off_R_pmhc, f)
-            if i == "Lf":
-                self.modify_forward_reverse(["R" + i + "_Lck"], ["R_Lck", i], self.rate_constants.k_foreign_off,
-                                            self.rate_constants.k_L_on, f)
-            else:
-                self.modify_forward_reverse(["R" + i + "_Lck"], ["R_Lck", i], self.rate_constants.k_self_off,
-                                            self.rate_constants.k_L_on, f)
+                                        self.rate_constants.k_lck_off_R_pmhc)
+
+            self.modify_forward_reverse(["R" + i + "_Lck"], ["R_Lck", i], self.k_L_off[i],
+                                        self.rate_constants.k_L_on)
 
             self.modify_forward_reverse(["R_Lck"], ["R", "Lck"], self.rate_constants.k_lck_off_R,
-                                        self.rate_constants.k_lck_on_R, f)
+                                        self.rate_constants.k_lck_on_R)
 
             self.record.append(''.join(["R" + i + "_Lck"]))
+        # f.write("\n\n")
 
     def add_cycle_2(self):
+        # f.write("# Cycle 2\n")
         self.increment_step()
         for i in self.output:
             self.modify_forward_reverse(["R" + i + "_Lck"], ["RP" + i + "_Lck"], self.rate_constants.k_p_on,
                                         self.rate_constants.k_p_off)
-            if i == "Lf":
-                self.modify_forward_reverse(["RP" + i + "_Lck"], ["RP_Lck", "Lf"],
-                                            self.rate_constants.k_foreign_off, self.rate_constants.k_L_on)
-            else:
-                self.modify_forward_reverse(["RP" + i + "_Lck"], ["RP_Lck", "Ls"],
-                                            self.rate_constants.k_self_off, self.rate_constants.k_L_on)
 
-            self.modify_forward_reverse(["RP_Lck"], ["R_Lck"],
-                                        self.rate_constants.k_p_off, self.rate_constants.k_p_on)
+            self.modify_forward_reverse(["RP" + i + "_Lck"], ["RP_Lck", i], self.k_L_off[i],
+                                        self.rate_constants.k_L_on)
+
+            self.modify_forward_reverse(["RP_Lck"], ["R_Lck"], self.rate_constants.k_p_off,
+                                        self.rate_constants.k_p_on)
 
             self.record.append(''.join(["RP" + i + "_Lck"]))
+        # f.write("\n\n")
 
-    def add_cycle_3(self):
+    def add_cycle_3(self, f):
         self.increment_step()
         for i in self.output:
             self.modify_forward_reverse(["RP" + i + "_Lck", "Zap"], ["RP" + i + "_Lck_Zap"],
                                         self.rate_constants.k_zap_on_R_pmhc,
-                                        self.rate_constants.k_zap_off_R_pmhc)
-            if i == "Lf":
-                self.modify_forward_reverse(["RP" + i + "_Lck_Zap"], ["RP_Lck_Zap", "Lf"],
-                                            self.rate_constants.k_foreign_off, self.rate_constants.k_L_on)
-            else:
-                self.modify_forward_reverse(["RP" + i + "_Lck_Zap"], ["RP_Lck_Zap", "Ls"],
-                                            self.rate_constants.k_self_off, self.rate_constants.k_L_on)
+                                        self.rate_constants.k_zap_off_R_pmhc, f)
+            # if i == "Lf":
+            self.modify_forward_reverse(["RP" + i + "_Lck_Zap"], ["RP_Lck_Zap", i],
+                                        self.k_L_off[i], self.rate_constants.k_L_on, f)
+            # else:
+            #     self.modify_forward_reverse(["RP" + i + "_Lck_Zap"], ["RP_Lck_Zap", "Ls"],
+            #                                 self.rate_constants.k_self_off, self.rate_constants.k_L_on, f)
 
             # New pathway back
             self.modify_forward_reverse(["RP_Lck_Zap"], ["RP_Zap", "Lck"], self.rate_constants.k_lck_off_zap_R,
-                                        self.rate_constants.k_lck_on_zap_R)
+                                        self.rate_constants.k_lck_on_zap_R, f)
 
             self.modify_forward_reverse(["RP_Zap"], ["RP", "Zap"], self.rate_constants.k_zap_off_R,
-                                        self.rate_constants.k_zap_on_R)
+                                        self.rate_constants.k_zap_on_R, f)
 
-            self.modify_forward_reverse(["RP"], ["R"], self.rate_constants.k_p_off, self.rate_constants.k_p_on)
+            self.modify_forward_reverse(["RP"], ["R"], self.rate_constants.k_p_off, self.rate_constants.k_p_on, f)
 
             self.record.append(''.join(["RP" + i + "_Lck_Zap"]))
 
@@ -283,14 +285,15 @@ class TcrCycleSelfLigand(TcrCycleSelfWithForeign):
         TcrCycleSelfWithForeign.__init__(self, arguments=arguments)
 
         del self.n_initial['Lf']
-        self.record = ["Ls", "RLs"]
+        self.record = ["Ls"]
+        # self.record = ["Ls", "RLs"]
         self.simulation_name = "kp_ls"
 
-        self.forward_rates = {"RLs": self.rate_constants.k_L_on}
-        self.reverse_rates = {"RLs": self.rate_constants.k_self_off}
+        # self.forward_rates = {"RLs": self.rate_constants.k_L_on}
+        # self.reverse_rates = {"RLs": self.rate_constants.k_self_off}
 
-        self.forward_rxns = [[["R", "Ls"], ["RLs"]]]
-        self.reverse_rxns = [[["RLs"], ["R", "Ls"]]]
+        # self.forward_rxns = [[["R", "Ls"], ["RLs"]]]
+        # self.reverse_rxns = [[["RLs"], ["R", "Ls"]]]
 
         self.output = ["Ls"]
 
@@ -312,6 +315,8 @@ class KPRealistic(KPSingleSpecies):
 
         self.record = self.ligand.record
 
+        self.simulation_time = 5
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Submitting job for calculating P(C0) as function of steps",
@@ -331,10 +336,15 @@ if __name__ == "__main__":
     else:
         raise Exception("Incorrect Directory labeling. Specify (Ls, Ls_Lf)")
 
-    f = open("ordered_network", "w")
+    # f = open("ordered_network", "w")
 
-    kp.ligand.add_cycle_1(f)
+    kp.ligand.add_step_0()
+    kp.ligand.add_cycle_1()
+    kp.ligand.add_cycle_2()
 
-    f.close()
+    print(kp.ligand.forward_rates)
+    print(kp.ligand.reverse_rates)
+
+    # f.close()
 
     kp.main_script(run=args.run)
