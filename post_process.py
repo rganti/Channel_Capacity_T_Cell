@@ -52,6 +52,7 @@ def average_trajectories(num_files, run_time, time_step):
             all_data += [array]
         elif run_time/time_step == 1:
             all_data += [array]
+
     np_all_data = np.array(all_data)
     print(np_all_data.shape)
     # all_data = np.array([np.loadtxt("hashed_traj_{0}".format(i)) for i in range(1, num_files)])
