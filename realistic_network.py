@@ -9,34 +9,38 @@ from two_species import KPSingleSpecies
 
 class BindingParameters(object):
     def __init__(self):
-        # First Cycle Lck binding
+        # Zeroth Cycle ligand binding
         self.k_L_on = 0.0022
         self.k_foreign_off = 0.2
         self.k_self_off = 10.0 * self.k_foreign_off
 
-        self.k_lck_on_R_pmhc = 0.297
+        # First Cycle Lck binding
+
+        self.k_lck_on_R_pmhc = 10.0
         self.k_lck_off_R_pmhc = self.k_foreign_off / 10.0
 
-        self.k_lck_on_R = 0.0
-        self.k_lck_off_R = self.k_foreign_off / 10.0
+        self.k_lck_on_R = self.k_lck_on_R_pmhc / 10000.0
+        self.k_lck_off_R = 20.0
 
         # Second Cycle Lck phosphorylation
         self.k_p_on_R_pmhc = 5.0
         self.k_p_off_R_pmhc = self.k_foreign_off / 10.0
 
-        self.k_lck_on_RP = self.k_lck_on_R_pmhc / 1000.0
-        self.k_lck_off_RP = self.k_foreign_off / 10.0
+        self.k_lck_on_RP = self.k_lck_on_R_pmhc / 10000.0
+        self.k_lck_off_RP = 20.0
 
-        self.k_p_on_R = 0.0
-        self.k_p_off_R = self.k_foreign_off / 10.0
+        self.k_p_on_R = self.k_p_on_R_pmhc / 1000
+        self.k_p_off_R = 10.0
+
+        # all of the above seems to work for 1st order kinetics
 
         # Third Cycle Zap binding
-        self.k_zap_on_R_pmhc = self.k_lck_on_R_pmhc
+        self.k_zap_on_R_pmhc = 3 * self.k_lck_on_R_pmhc
         self.k_zap_off_R_pmhc = self.k_foreign_off / 10.0
 
         self.k_lck_on_zap_R = self.k_lck_on_RP
         self.k_lck_off_zap_R = self.k_L_on / 10.0
-        self.k_lck_off_zap_R = 100.0
+        self.k_lck_off_zap_R = 1.0
 
         self.k_zap_on_R = self.k_zap_on_R_pmhc / 10000.0
         self.k_zap_off_R = 20.0
@@ -86,14 +90,16 @@ class TcrSelfWithForeign(object):
         self.output = ["C", "D"]
 
     def set_num_samples(self):
-        if self.arguments.test or self.arguments.ss:
-            self.num_samples = 5
+        if self.arguments:
+            if self.arguments.test or self.arguments.ss:
+                self.num_samples = 5
+            else:
+                self.num_samples = 1000
         else:
             self.num_samples = 1000
 
     def change_ligand_concentration(self, concentration):
         self.n_initial["Ls"] = concentration
-        self.n_initial["Ls"] = 2000
 
     def increment_step(self):
         self.num_kp_steps += 1
@@ -190,7 +196,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
     def __init__(self, arguments=None):
         TcrSelfWithForeign.__init__(self, arguments=arguments)
 
-        self.n_initial = {"R": 10000, "Lck": 10000, "Zap": 10000, "Lf": 2000, "Ls": 0}
+        self.n_initial = {"R": 10000, "Lck": 10000, "Zap": 10000, "Lf": 100, "Ls": 0}
         self.record = ["Lf", "Ls"]
         self.output = ["Lf", "Ls"]
 
@@ -204,11 +210,10 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         self.forward_rxns = []
         self.reverse_rxns = []
 
-        # Only foreign
-        del self.n_initial['Ls']
-        self.record = ["Lf"]
-        self.output = ["Lf"]
-
+        # # Only foreign
+        # del self.n_initial['Ls']
+        # self.record = ["Lf"]
+        # self.output = ["Lf"]
 
     def modify_forward_reverse(self, reactants, products, forward_rate, reverse_rate):
         forward_key = ''.join(reactants) + '_' + ''.join(products)
@@ -220,6 +225,8 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         self.reverse_rxns.append([products, reactants])
 
     def add_step_0(self):
+        # del self.n_initial["Lck"]
+        # del self.n_initial["Zap"]
         for i in self.output:
             self.modify_forward_reverse(["R", i], ["R" + i], self.rate_constants.k_L_on,
                                         self.k_L_off[i])
@@ -237,8 +244,43 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
             self.modify_forward_reverse(["R_Lck"], ["R", "Lck"], self.rate_constants.k_lck_off_R,
                                         self.rate_constants.k_lck_on_R)
 
-            self.record.append(''.join(["R_Lck"]))
+            # self.record.append(''.join(["R_Lck"]))
             self.record.append(''.join(["R" + i + "_Lck"]))
+
+    # def add_cycle_1_first_order(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse(["R" + i], ["R" + i + "_Lck"], self.rate_constants.k_lck_on_R_pmhc,
+    #                                     self.rate_constants.k_lck_off_R_pmhc)
+    #
+    #         self.modify_forward_reverse(["R" + i + "_Lck"], ["R_Lck", i], self.k_L_off[i],
+    #                                     self.rate_constants.k_L_on)
+    #
+    #         self.modify_forward_reverse(["R_Lck"], ["R"], self.rate_constants.k_lck_off_R,
+    #                                     self.rate_constants.k_lck_on_R)
+    #
+    #         # self.record.append(''.join(["R_Lck"]))
+    #         self.record.append(''.join(["R" + i + "_Lck"]))
+    #
+    # def add_cycle_2_first_order(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse(["R" + i + "_Lck"], ["RP" + i + "_Lck"], self.rate_constants.k_p_on_R_pmhc,
+    #                                     self.rate_constants.k_p_off_R_pmhc)
+    #
+    #         self.modify_forward_reverse(["RP" + i + "_Lck"], ["RP_Lck", i], self.k_L_off[i],
+    #                                     self.rate_constants.k_L_on)
+    #
+    #         # New pathway back
+    #         self.modify_forward_reverse(["RP_Lck"], ["RP"], self.rate_constants.k_lck_off_RP,
+    #                                     self.rate_constants.k_lck_on_RP)
+    #
+    #         self.modify_forward_reverse(["RP"], ["R"], self.rate_constants.k_p_off_R,
+    #                                     self.rate_constants.k_p_on_R)
+    #
+    #         # self.record.append(''.join(["RP"]))
+    #         # self.record.append(''.join(["RP_Lck"]))
+    #         self.record.append(''.join(["RP" + i + "_Lck"]))
 
     def add_cycle_2(self):
         self.increment_step()
@@ -258,9 +300,9 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
             # self.modify_forward_reverse(["RP_Lck"], ["R_Lck"], self.rate_constants.k_p_off_R,
             #                             self.rate_constants.k_p_on_R)
-
-            self.record.append(''.join(["RP"]))
-            self.record.append(''.join(["RP_Lck"]))
+            #
+            # self.record.append(''.join(["RP"]))
+            # self.record.append(''.join(["RP_Lck"]))
             self.record.append(''.join(["RP" + i + "_Lck"]))
 
     def add_cycle_3(self):
@@ -282,19 +324,113 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
             self.modify_forward_reverse(["RP"], ["R"], self.rate_constants.k_p_off_R,
                                         self.rate_constants.k_p_on_R)
 
-            self.record.append(''.join(["RP_Lck_Zap"]))
+            # self.record.append(''.join(["RP_Lck_Zap"]))
+            self.record.append(''.join(["RP" + i + "_Lck_Zap"]))
+
+    # def add_new_cycle_3(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse(["RP" + i + "_Lck", "Zap"], ["RP" + i + "_Lck_Zap"],
+    #                                     self.rate_constants.k_zap_on_R_pmhc,
+    #                                     self.rate_constants.k_zap_off_R_pmhc)
+    #         self.modify_forward_reverse(["RP" + i + "_Lck_Zap"], ["RP_Lck_Zap", i],
+    #                                     self.k_L_off[i], self.rate_constants.k_L_on)
+    #
+    #         # New pathway back
+    #         self.modify_forward_reverse(["RP_Lck_Zap"], ["RP_Zap", "Lck"], self.rate_constants.k_lck_off_zap_R,
+    #                                     self.rate_constants.k_lck_on_zap_R)
+    #
+    #         self.modify_forward_reverse(["RP_Zap"], ["R_Zap"], self.rate_constants.k_p_off_R,
+    #                                     self.rate_constants.k_p_on_R)
+    #
+    #         self.modify_forward_reverse(["R_Zap"], ["R", "Zap"], self.rate_constants.k_zap_off_R,
+    #                                     self.rate_constants.k_zap_on_R)
+    #
+    #         self.record.append(''.join(["RP_Lck_Zap"]))
+    #         self.record.append(''.join(["RP" + i + "_Lck_Zap"]))
+
+
+class TcrCycleSelfWithForeignFirstOrder(TcrCycleSelfWithForeign):
+    def __init__(self, arguments=None):
+        TcrCycleSelfWithForeign.__init__(self, arguments)
+        self.n_initial = {"R": 10000, "Lf": 100, "Ls": 0}
+
+    def add_cycle_1_first_order(self):
+        self.increment_step()
+        for i in self.output:
+            self.modify_forward_reverse(["R" + i], ["R" + i + "_Lck"], self.rate_constants.k_lck_on_R_pmhc,
+                                        self.rate_constants.k_lck_off_R_pmhc)
+
+            self.modify_forward_reverse(["R" + i + "_Lck"], ["R_Lck", i], self.k_L_off[i],
+                                        self.rate_constants.k_L_on)
+
+            self.modify_forward_reverse(["R_Lck"], ["R"], self.rate_constants.k_lck_off_R,
+                                        self.rate_constants.k_lck_on_R)
+
+            self.record.append(''.join(["R" + i + "_Lck"]))
+
+    def add_cycle_2_first_order(self):
+        self.increment_step()
+        for i in self.output:
+            self.modify_forward_reverse(["R" + i + "_Lck"], ["RP" + i + "_Lck"], self.rate_constants.k_p_on_R_pmhc,
+                                        self.rate_constants.k_p_off_R_pmhc)
+
+            self.modify_forward_reverse(["RP" + i + "_Lck"], ["RP_Lck", i], self.k_L_off[i],
+                                        self.rate_constants.k_L_on)
+
+            # New pathway back
+            self.modify_forward_reverse(["RP_Lck"], ["RP"], self.rate_constants.k_lck_off_RP,
+                                        self.rate_constants.k_lck_on_RP)
+
+            self.modify_forward_reverse(["RP"], ["R"], self.rate_constants.k_p_off_R,
+                                        self.rate_constants.k_p_on_R)
+
+            self.record.append(''.join(["RP" + i + "_Lck"]))
+
+    def add_cycle_3_first_order(self):
+        self.increment_step()
+        for i in self.output:
+            self.modify_forward_reverse(["RP" + i + "_Lck"], ["RP" + i + "_Lck_Zap"],
+                                        self.rate_constants.k_zap_on_R_pmhc,
+                                        self.rate_constants.k_zap_off_R_pmhc)
+            self.modify_forward_reverse(["RP" + i + "_Lck_Zap"], ["RP_Lck_Zap", i],
+                                        self.k_L_off[i], self.rate_constants.k_L_on)
+
+            # New pathway back
+            self.modify_forward_reverse(["RP_Lck_Zap"], ["RP_Zap"], self.rate_constants.k_lck_off_zap_R,
+                                        self.rate_constants.k_lck_on_zap_R)
+
+            self.modify_forward_reverse(["RP_Zap"], ["RP"], self.rate_constants.k_zap_off_R,
+                                        self.rate_constants.k_zap_on_R)
+
             self.record.append(''.join(["RP" + i + "_Lck_Zap"]))
 
 
-class TcrCycleSelfLigand(TcrCycleSelfWithForeign):
+class TcrCycleForeignLigand(TcrCycleSelfWithForeignFirstOrder):
     def __init__(self, arguments=None):
-        TcrCycleSelfWithForeign.__init__(self, arguments=arguments)
+        TcrCycleSelfWithForeignFirstOrder.__init__(self, arguments)
+
+        del self.n_initial['Ls']
+        self.n_initial["Lf"] = 1000
+        self.record = ["Lf"]
+        self.simulation_name = "kp_lf"
+
+        self.output = ["Lf"]
+
+
+class TcrCycleSelfLigand(TcrCycleSelfWithForeignFirstOrder):
+    def __init__(self, arguments=None):
+        TcrCycleSelfWithForeignFirstOrder.__init__(self, arguments=arguments)
 
         del self.n_initial['Lf']
+        self.n_initial["Ls"] = 1000
         self.record = ["Ls"]
         self.simulation_name = "kp_ls"
 
         self.output = ["Ls"]
+
+    # def change_ligand_concentration(self, concentration):
+    #     self.n_initial["Ls"] = 264
 
 
 class KPRealistic(KPSingleSpecies):
@@ -302,7 +438,7 @@ class KPRealistic(KPSingleSpecies):
         KPSingleSpecies.__init__(self, self_foreign=self_foreign, arguments=arguments)
 
         if self.self_foreign_flag:
-            self.ligand = TcrCycleSelfWithForeign(arguments=arguments)
+            self.ligand = TcrCycleSelfWithForeignFirstOrder(arguments=arguments)
         else:
             self.ligand = TcrCycleSelfLigand(arguments=arguments)
 
@@ -325,7 +461,7 @@ if __name__ == "__main__":
     parser.add_argument('--test', action='store_true', default=False,
                         help="flag for testing.")
     parser.add_argument('--ss', action='store_true', default=False,
-                        help="falge for checking if sims approach steady-state.")
+                        help="flag for checking if sims approach steady-state.")
     args = parser.parse_args()
 
     if "Ls_Lf" in os.getcwd():
@@ -337,14 +473,15 @@ if __name__ == "__main__":
 
     kp.ligand.add_step_0()
     if "1_step" in os.getcwd():
-        kp.ligand.add_cycle_1()
+        kp.ligand.add_cycle_1_first_order()
     elif "2_step" in os.getcwd():
-        kp.ligand.add_cycle_1()
-        kp.ligand.add_cycle_2()
+        kp.ligand.add_cycle_1_first_order()
+        kp.ligand.add_cycle_2_first_order()
     elif "3_step" in os.getcwd():
-        kp.ligand.add_cycle_1()
-        kp.ligand.add_cycle_2()
-        kp.ligand.add_cycle_3()
+        kp.ligand.add_cycle_1_first_order()
+        kp.ligand.add_cycle_2_first_order()
+        kp.ligand.add_cycle_3_first_order()
+
 
     print(kp.ligand.forward_rates)
     print(kp.ligand.reverse_rates)
