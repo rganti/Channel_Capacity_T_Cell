@@ -5,9 +5,12 @@ import time
 
 import numpy as np
 
-from realistic_network import lognuniform, TcrCycleForeignLigand, TcrCycleSelfLigand
+from realistic_network import TcrCycleForeignLigand, TcrCycleSelfLigand
 from two_species import KPSingleSpecies
 
+
+def lognuniform(low=0, high=1, size=None, base=10):
+    return np.power(base, np.random.uniform(low, high, size))
 
 def make_and_cd(directory_name):
     os.makedirs(directory_name)
@@ -219,3 +222,4 @@ if __name__ == "__main__":
 
     # kp_parameter_testing.parameter_testing(run=args.run)
     kp_parameter_testing.simple_kp(run=args.run)
+
