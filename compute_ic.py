@@ -1,6 +1,10 @@
 #!/usr/bin/python
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
+
+from post_process import load
 
 
 class InformationCapacity(object):
@@ -11,6 +15,14 @@ class InformationCapacity(object):
         self.foreign_ligand = np.loadtxt(foreign_directory + "Ligand_concentrations")
         self.self_output = np.loadtxt(self_directory + "output")
         self.self_ligand = np.loadtxt(self_directory + "Ligand_concentrations")
+
+        if os.path.exists(foreign_directory + "sample_0/column_names"):
+            self.foreign_column = load(foreign_directory + "sample_0/column_names")
+            self.foreign_column_names = self.foreign_column[0].split()
+
+        if os.path.exists(self_directory + "sample_0/column_names"):
+            self.self_column = load(self_directory + "sample_0/column_names")
+            self.self_column_names = self.self_column[0].split()
 
         if limiting == 'foreign':
             self.limiting_output = self.foreign_output
@@ -28,8 +40,15 @@ class InformationCapacity(object):
         return count_cn
 
     def plot_cn(self):
+        if self.foreign_column_names:
+            if "Lf" in self.foreign_column_names and "Ls" in self.foreign_column_names:
+                label = 'P(' + self.foreign_column_names[-2] + " + " + self.foreign_column_names[-1] + ')'
+            else:
+                label = 'P(' + self.foreign_column_names[-1] + ')'
+        else:
+            label = 'P(C{0})'.format(self.num_steps - 1)
         count, bins, _ = plt.hist(self.foreign_output, bins=self.bins, align='mid', normed=True,
-                                  label='P(C{0})'.format(self.num_steps - 1))
+                                  label=label)
 
     def plot_lf(self, bins):
         count, bins_lf, _ = plt.hist(self.foreign_ligand, bins=bins, align='mid', normed=True,
@@ -40,8 +59,12 @@ class InformationCapacity(object):
         return count_dn
 
     def plot_dn(self):
+        if self.self_column_names:
+            label = 'P(' + self.self_column_names[-1] + ')'
+        else:
+            label = 'P(D{0})'.format(self.num_steps - 1)
         count, bins, _ = plt.hist(self.self_output, bins=self.bins, align='mid', normed=True,
-                                  label='P(D{0})'.format(self.num_steps - 1))
+                                  label=label)
 
     def plot_ls(self, bins):
         count, bins_ls, _ = plt.hist(self.self_ligand, bins=bins, align='mid', normed=True,
