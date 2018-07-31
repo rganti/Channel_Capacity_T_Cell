@@ -20,13 +20,13 @@ class PlotOutputHist(object):
                 trajectory = np.loadtxt("sample_{0}/mean_traj".format(i))
                 if len(trajectory.shape) == 1:
                     if "Ls_Lf" in os.getcwd():
-                        # if "C_" in self.column_names[0] and "D_" in self.column_names[0]:
-                        print("Self and Foreign")
-                        # print("C and D in column_names")
+                        if i == 0:
+                            print("Self and Foreign")
                         output_array.append(trajectory[-1] + trajectory[-2])
                     else:
+                        if i == 0:
+                            print("Only Self")
                         output_array.append(trajectory[-1])
-                        print("Only Self")
                 else:
                     output_array.append(trajectory[-1, -1])
             except:
@@ -64,12 +64,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     output = PlotOutputHist()
-    output.plot_hist()
-    plt.savefig("output.pdf", format='pdf')
-
-    ligand = PlotLigandHist()
-    ligand.plot_hist()
-    plt.legend()
-
-    plt.savefig("lf_output.pdf", format='pdf')
-    plt.close()
+    output.compute_output()
+    # output.plot_hist()
+    # plt.savefig("output.pdf", format='pdf')
+    #
+    # ligand = PlotLigandHist()
+    # ligand.plot_hist()
+    # plt.legend()
+    #
+    # plt.savefig("lf_output.pdf", format='pdf')
+    # plt.close()
