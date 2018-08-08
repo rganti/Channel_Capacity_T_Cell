@@ -285,9 +285,6 @@ class KPSingleSpecies(object):
         self.run_time = 100
         self.simulation_time = 2
 
-        self.time_step = 0
-        self.set_time_step()
-
         self.home_directory = os.getcwd()
 
         self.num_kp_steps = 1
@@ -302,11 +299,12 @@ class KPSingleSpecies(object):
     def set_time_step(self):
         if self.arguments:
             if self.arguments.ss:
-                self.time_step = 0.1
+                time_step = 0.1
             else:
-                self.time_step = self.run_time
+                time_step = self.run_time
         else:
-            self.time_step = self.run_time
+            time_step = self.run_time
+        return time_step
 
     @staticmethod
     def define_reactions(f, rxn, rate, n):
@@ -356,7 +354,7 @@ class KPSingleSpecies(object):
         n.close()
         f.close()
 
-    def generate_qsub(self, simulation_name):
+    def generate_qsub(self, simulation_name, time_step):
         q = open("qsub.sh", "w")
         q.write("#PBS -m ae\n")
         q.write("#PBS -q short\n")
@@ -366,23 +364,23 @@ class KPSingleSpecies(object):
         q.write("echo $PBS_JOBID > job_id\n")
         q.write("EXE_FILE={0}\n".format(simulation_name))
         q.write("RUN_TIME={0}\n".format(self.run_time))
-        q.write("STEP={0}\n\n".format(self.time_step))
+        q.write("STEP={0}\n\n".format(time_step))
         q.write("for j in {1.." + str(self.num_files) + "}\n")
         q.write("do\n")
-        if self.time_step == self.run_time:
+        if time_step == self.run_time:
             q.write("\t ./$EXE_FILE -e $RUN_TIME > traj_$j\n")
         else:
             q.write("\t ./$EXE_FILE -e $RUN_TIME -t $STEP > traj_$j\n")
         q.write("done\n\n")
         q.write("python ~/SSC_python_modules/post_process.py --num_files {0} "
-                "--run_time {1} --time_step {2}\n".format(self.num_files, self.run_time, self.time_step))
+                "--run_time {1} --time_step {2}\n".format(self.num_files, self.run_time, time_step))
         # q.write("python ~/SSC_python_modules/plot.py --steps {0}\n".format(self.num_kp_steps))
         q.close()
 
-    def generate(self, simulation_name):
+    def generate(self, simulation_name, time_step):
         self.generate_ssc_script(simulation_name)
         compile_script(simulation_name + ".rxn")
-        self.generate_qsub(simulation_name)
+        self.generate_qsub(simulation_name, time_step)
 
     def single_add_step(self):
         self.num_kp_steps += 1
@@ -437,9 +435,8 @@ class KPSingleSpecies(object):
 
             if self.ligand.num_kp_steps > 6:
                 self.run_time = 1000
-                self.set_time_step()
 
-            self.generate(simulation_name)
+            self.generate(simulation_name, self.set_time_step())
             if run:
                 (stdout, stderr) = subprocess.Popen(["qsub {0}".format("qsub.sh")], shell=True, stdout=subprocess.PIPE,
                                                     cwd=os.getcwd()).communicate()
