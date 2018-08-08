@@ -4,7 +4,9 @@ import subprocess
 import time
 
 import numpy as np
+from matplotlib import pyplot as plt
 
+from post_process import load
 from realistic_network import TcrCycleForeignLigand, TcrCycleSelfLigand
 from two_species import KPSingleSpecies
 
@@ -19,10 +21,61 @@ def make_and_cd(directory_name):
     print("Changed into directory: " + str(os.getcwd()))
 
 
+def plot_eta_previous(file_path, eta_class):
+    eta = np.loadtxt(file_path + "eta")
+
+    foreign_column = load(file_path + "Lf/column_names")
+    foreign_column_names = foreign_column[0].split()
+
+    self_column = load(file_path + "Ls/column_names")
+    self_column_names = self_column[0].split()
+
+    plt.plot(eta_class.rates, np.zeros_like(eta_class.rates) + eta,
+             label="{0}/{1}".format(self_column_names[-1], foreign_column_names[-1]),
+             linestyle='-', marker='o')
+
+
+class CheckEquality(object):
+    def __init__(self, file_path_1, file_path_2):
+        self.file_1 = load(file_path_1)
+        self.file_2 = load(file_path_2)
+
+    def check(self):
+        i = 0
+        while i < len(self.file_1):
+            x = self.file_1[i] == self.file_2[i]
+
+            if not x:
+                print("File 1: " + self.file_1[i])
+                print("File 2: " + self.file_2[i])
+                break
+
+            i += 1
+
+        return x
+
+
+class PlotEta(object):
+    def __init__(self, file_path="./"):
+        self.eta = np.loadtxt(file_path + "eta")
+        self.rates = np.loadtxt(file_path + "rates")
+
+        self.foreign_column = load(file_path + "parameter_0/Lf/column_names")
+        self.foreign_column_names = self.foreign_column[0].split()
+
+        self.self_column = load(file_path + "parameter_0/Ls/column_names")
+        self.self_column_names = self.self_column[0].split()
+
+    def plot_eta(self):
+        plt.plot(self.rates, self.eta,
+                 label="{0}/{1}".format(self.self_column_names[-1], self.foreign_column_names[-1]),
+                 linestyle='-', marker='o')
+
+
 class KPParameterTest(KPSingleSpecies):
     def __init__(self, self_foreign=False, arguments=None):
         KPSingleSpecies.__init__(self, self_foreign=self_foreign, arguments=arguments)
-        self.run_time = 500
+        # self.run_time = 500
 
         if self.self_foreign_flag:
             self.ligand = TcrCycleForeignLigand(arguments=arguments)
@@ -64,6 +117,8 @@ class ParameterTesting(object):
             kp_ligand.ligand.add_cycle_2_first_order()
         if self.arguments.steps > 2:
             kp_ligand.ligand.add_cycle_3_first_order()
+        if self.arguments.steps > 3:
+            kp_ligand.ligand.add_negative_feedback()
 
     def wait_for_simulations(self):
         while True:
@@ -97,8 +152,7 @@ class ParameterTesting(object):
             kp_ligand.ligand.add_step_0()
             self.add_steps(kp_ligand)
 
-            kp_ligand.set_time_step()
-            kp_ligand.generate(kp_ligand.ligand.simulation_name)
+            kp_ligand.generate(kp_ligand.ligand.simulation_name, kp_ligand.set_time_step())
 
             if run:
                 (stdout, stderr) = subprocess.Popen(["qsub {0}".format("qsub.sh")], shell=True, stdout=subprocess.PIPE,
@@ -111,6 +165,10 @@ class ParameterTesting(object):
             self.compute_hopfield_error()
             compute_output(self.foreign_file_list)
             compute_output(self.self_file_list)
+
+    @staticmethod
+    def change_parameter(kp_ligand, parameter):
+        kp_ligand.ligand.rate_constants.k_lck_off_zap_R = parameter
 
     def parameter_testing(self, run=False):
         home_directory = os.getcwd()
@@ -130,13 +188,13 @@ class ParameterTesting(object):
                 self.file_list = self.foreign_file_list + self.self_file_list
                 make_and_cd(ligand_directory)
 
-                kp_ligand.ligand.rate_constants.k_lck_off_zap_R = self.parameter_list[i]
+                self.change_parameter(kp_ligand, self.parameter_list[i])
+                # kp_ligand.ligand.rate_constants.k_lck_off_zap_R = self.parameter_list[i]
                 kp_ligand.ligand.add_step_0()
 
                 self.add_steps(kp_ligand)
 
-                kp_ligand.set_time_step()
-                kp_ligand.generate(kp_ligand.ligand.simulation_name)
+                kp_ligand.generate(kp_ligand.ligand.simulation_name, kp_ligand.set_time_step())
 
                 if run:
                     (stdout, stderr) = subprocess.Popen(["qsub {0}".format("qsub.sh")], shell=True,
@@ -179,6 +237,46 @@ class ParameterTesting(object):
         compute_output(self.self_file_list)
 
 
+class ParameterTestingSecondOrder(ParameterTesting):
+    def __init__(self, arguments=None):
+        ParameterTesting.__init__(self, arguments=arguments)
+        self.parameter_list = [float(i) for i in np.sort(lognuniform(low=-4, high=2, size=20))]
+
+        if self.arguments.ss or self.arguments.test:
+            x = self.parameter_list[:1]
+            y = self.parameter_list[-1:]
+            self.parameter_list = [x[0], y[0]]
+
+    def add_steps(self, kp_ligand):
+        if self.arguments.steps > 0:
+            kp_ligand.ligand.add_cycle_1()
+        if self.arguments.steps > 1:
+            kp_ligand.ligand.add_cycle_2()
+        if self.arguments.steps > 2:
+            kp_ligand.ligand.add_cycle_3()
+        if self.arguments.steps > 3:
+            kp_ligand.ligand.add_cycle_4()
+
+    @staticmethod
+    def change_parameter(kp_ligand, parameter):
+        kp_ligand.ligand.rate_constants.k_negative_loop = parameter
+
+
+class ParameterTestingSecondOrderNumbers(ParameterTestingSecondOrder):
+    def __init__(self, arguments=None):
+        ParameterTestingSecondOrder.__init__(self, arguments=arguments)
+        self.parameter_list = [int(i) for i in np.sort(lognuniform(low=2, high=4, size=20))]
+
+        if self.arguments.ss or self.arguments.test:
+            x = self.parameter_list[:1]
+            y = self.parameter_list[-1:]
+            self.parameter_list = [x[0], y[0]]
+
+    @staticmethod
+    def change_parameter(kp_ligand, parameter):
+        kp_ligand.ligand.n_initial["Zap"] = parameter
+
+
 def compute_output(file_list):
     output_array = []
     for path in file_list:
@@ -202,8 +300,6 @@ if __name__ == "__main__":
                         help='Flag for submitting simulations.')
     parser.add_argument('--p_test', action='store_true', default=False,
                         help='Flag for submitting parameter testing simulations.')
-    parser.add_argument('--kp', action='store_true', default=False,
-                        help='Flag for computing hopfield error in simple simulation.')
     parser.add_argument('--ss', action='store_true', default=False,
                         help="flag for checking if sims approach steady-state.")
     parser.add_argument('--test', action='store_true', default=False,
@@ -214,12 +310,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(str(args.steps))
 
-    directory_name = "{0}_step".format(args.steps)
+    directory_name = "{0}_step_check".format(args.steps)
     make_and_cd(directory_name)
 
-    kp_parameter_testing = ParameterTesting(arguments=args)
+    kp_parameter_testing = ParameterTestingSecondOrder(arguments=args)
     # kp_parameter_testing.process_output()
 
-    # kp_parameter_testing.parameter_testing(run=args.run)
-    kp_parameter_testing.simple_kp(run=args.run)
-
+    if args.p_test:
+        kp_parameter_testing.parameter_testing(run=args.run)
+    else:
+        kp_parameter_testing.simple_kp(run=args.run)
