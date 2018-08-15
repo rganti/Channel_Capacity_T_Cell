@@ -57,20 +57,27 @@ class BindingParameters(object):
 
         self.k_negative_loop = 1.0
 
-        # Sixth LAT on
+        # # Sixth LAT on
         self.k_lat_on_species = self.k_lck_on_R_pmhc
         self.k_lat_off_species = self.k_lck_off_R_pmhc
 
         self.k_lat_off_rp_zap = 20.0
         self.k_lat_on_rp_zap = self.k_zap_on_R
 
-        # # Seventh LAT phosphorylation
-        # self.k_p_lat_on_species = self.k_p_on_zap_species / 10
-        # self.k_p_lat_off_species = self.k_p_off_zap_species
-        #
-        # self.k_p_on_lat = self.k_p_on_R_pmhc / 100000.0
-        # self.k_p_off_lat = 20.0
-        #
+        # Seventh LAT phosphorylation
+        self.k_p_lat_on_species = 0.006  # self.k_p_on_zap_species / 100
+        self.k_p_lat_off_species = self.k_p_off_zap_species
+
+        # Eighth LAT -> final product
+        self.k_product_on = 0.008
+        self.k_product_off = self.k_p_off_R_pmhc
+
+        # Ninth: Positive Feedback Loop
+        self.k_positive_loop = 0.00027
+
+        self.k_p_on_lat = self.k_p_on_R_pmhc / 10000.0
+        self.k_p_off_lat = 20.0
+
         # # Eighth Grb on
         # self.k_grb_on_species = self.k_lck_on_R_pmhc
         # self.k_grb_off_species = self.k_lck_off_R_pmhc
@@ -158,59 +165,59 @@ class TcrStepsSelfWithForeign(TcrSelfWithForeign):
 
         self.record.append(''.join(products))
 
-    def add_step_1(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_RL", "Lck"], [i + "_RL1"], self.rate_constants.k_lck_on_R_pmhc,
-                                        self.rate_constants.k_lck_off_R_pmhc)
-
-    def add_step_2(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_RL1"], [i + "_RL2"], self.rate_constants.k_p_on,
-                                        self.rate_constants.k_p_off)
-
-    def add_step_3(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_RL2", "Zap"], [i + "_Zap"], self.rate_constants.k_zap_on_R_pmhc,
-                                        self.rate_constants.k_zap_off_R_pmhc)
-
-    def add_step_4(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_Zap"], [i + "_Zap1"], self.rate_constants.k_p_on,
-                                        self.rate_constants.k_p_off)
-
-    def add_step_5(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_Zap1", "Lat"], [i + "_Lat"], self.rate_constants.k_lat_on,
-                                        self.rate_constants.k_lat_off)
-
-    def add_step_6(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_Lat"], [i + "_Lat1"], self.rate_constants.k_p_on,
-                                        self.rate_constants.k_p_off)
-
-    def add_step_7(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_Lat1", "Plc"], [i + "_Plc"], self.rate_constants.k_plc_on,
-                                        self.rate_constants.k_plc_off)
-
-    def add_step_8(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_Plc"], [i + "_Plc1"], self.rate_constants.k_p_plc_on,
-                                        self.rate_constants.k_p_off)
-
-    def add_step_9(self):
-        self.increment_step()
-        for i in self.output:
-            self.modify_forward_reverse([i + "_Plc1", "Pip"], [i + "_Pip"], self.rate_constants.k_pip_on,
-                                        self.rate_constants.k_pip_off)
+    # def add_step_1(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_RL", "Lck"], [i + "_RL1"], self.rate_constants.k_lck_on_R_pmhc,
+    #                                     self.rate_constants.k_lck_off_R_pmhc)
+    #
+    # def add_step_2(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_RL1"], [i + "_RL2"], self.rate_constants.k_p_on,
+    #                                     self.rate_constants.k_p_off)
+    #
+    # def add_step_3(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_RL2", "Zap"], [i + "_Zap"], self.rate_constants.k_zap_on_R_pmhc,
+    #                                     self.rate_constants.k_zap_off_R_pmhc)
+    #
+    # def add_step_4(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_Zap"], [i + "_Zap1"], self.rate_constants.k_p_on,
+    #                                     self.rate_constants.k_p_off)
+    #
+    # def add_step_5(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_Zap1", "Lat"], [i + "_Lat"], self.rate_constants.k_lat_on,
+    #                                     self.rate_constants.k_lat_off)
+    #
+    # def add_step_6(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_Lat"], [i + "_Lat1"], self.rate_constants.k_p_on,
+    #                                     self.rate_constants.k_p_off)
+    #
+    # def add_step_7(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_Lat1", "Plc"], [i + "_Plc"], self.rate_constants.k_plc_on,
+    #                                     self.rate_constants.k_plc_off)
+    #
+    # def add_step_8(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_Plc"], [i + "_Plc1"], self.rate_constants.k_p_plc_on,
+    #                                     self.rate_constants.k_p_off)
+    #
+    # def add_step_9(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.modify_forward_reverse([i + "_Plc1", "Pip"], [i + "_Pip"], self.rate_constants.k_pip_on,
+    #                                     self.rate_constants.k_pip_off)
 
 
 class TcrSelfLigand(TcrStepsSelfWithForeign):
@@ -234,8 +241,8 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
     def __init__(self, arguments=None):
         TcrSelfWithForeign.__init__(self, arguments=arguments)
 
-        self.n_initial = {"R": 10000, "Lck": 1000, "Zap": 1000, "LAT": 200, "Grb": 150, "Sos": 150, "Ras_GDP": 100,
-                          "Lf": self.arguments.ls_lf, "Ls": 0}
+        self.n_initial = {"R": 10000, "Lck": 1000, "Zap": 1000, "LAT": 200, "Lf": self.arguments.ls_lf, "Ls": 1000}
+        # "Grb": 150, "Sos": 150, "Ras_GDP": 100,
         self.record = ["Lf", "Ls"]
         self.output = ["Lf", "Ls"]
 
@@ -402,88 +409,39 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
         return final_product
 
-    def cycle_7(self, i, count):
-        final_product = "RP" + i + "_Lck_Zap_P_LATP"
-        self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LAT"], [final_product],
-                                    self.rate_constants.k_p_lat_on_species, self.rate_constants.k_p_lat_off_species)
-        no_ligand = self.ligand_off(final_product, i)
+    # def add_step_6(self):
+    #     self.increment_step()
+    #     final_product = "LATP"
+    #     for i in self.output:
+    #         self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P", "LAT"], ["RP" + i + "_Lck_Zap_P", final_product],
+    #                                     self.rate_constants.k_p_lat_on_species, self.rate_constants.k_p_lat_off_species)
+    #
+    #     # self.create_loop(["LATP"], ["LAT"], self.rate_constants.k_p_lat_off_species)
+    #
+    #     self.record_append(final_product)
 
-        if count == 0:
-            no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
-            no_zap_p = self.dephosphorylate_zap(no_lck)
-            no_rp_zap = self.rp_zap_off(no_zap_p)
-            self.dephosphorylate_lat(no_rp_zap)
+    def add_step_7(self):
+        self.increment_step()
+        for i in self.output:
+            final_product = i + "_LATP"
+            self.create_loop(["RP" + i + "_Lck_Zap_P_LAT"], ["RP" + i + "_Lck_Zap_P", final_product],
+                             self.rate_constants.k_p_lat_on_species)
+            self.create_loop([final_product], ["LAT"], self.rate_constants.k_p_lat_off_species)
+            self.record_append(final_product)
 
-        return final_product
-
-    def cycle_8(self, i, count):
-        final_product = "RP" + i + "_Lck_Zap_P_LATP_Grb"
-        self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP", "Grb"], [final_product],
-                                    self.rate_constants.k_grb_on_species, self.rate_constants.k_grb_off_species)
-        no_ligand = self.ligand_off(final_product, i)
-
-        if count == 0:
-            no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
-            no_zap_p = self.dephosphorylate_zap(no_lck)
-            no_rp_zap = self.rp_zap_off(no_zap_p)
-            self.grb_off(no_rp_zap)
-
-        return final_product
-
-    def cycle_9(self, i, count):
-        final_product = "RP" + i + "_Lck_Zap_P_LATP_Grb_Sos"
-        self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP_Grb", "Sos"], [final_product],
-                                    self.rate_constants.k_sos_on_species, self.rate_constants.k_sos_off_species)
-        no_ligand = self.ligand_off(final_product, i)
-
-        if count == 0:
-            no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
-            no_zap_p = self.dephosphorylate_zap(no_lck)
-            no_rp_zap = self.rp_zap_off(no_zap_p)
-            self.sos_off(no_rp_zap)
-
-        return final_product
+    def add_step_8(self):
+        self.increment_step()
+        for i in self.output:
+            final_product = i + "_Product"
+            self.modify_forward_reverse([i + "_LATP"], [final_product], self.rate_constants.k_product_on,
+                                        self.rate_constants.k_product_off)
+            self.record_append(final_product)
 
     def add_positive_feedback(self):
         self.increment_step()
-        count = 0
         for i in self.output:
-            # catalytic binding
-            self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP_Grb_Sos", "Ras_GDP"],
-                                        ["R" + i + "_species_Sos_Ras_GDP"],
-                                        self.rate_constants.k_ras_on_species, self.rate_constants.k_ras_off_species)
-
-            # proofreading of Sos-Ras_GDP complex
-            no_ligand = self.ligand_off("R" + i + "_species_Sos_Ras_GDP", i)
-            self.modify_forward_reverse([no_ligand], ["RP_Lck_Zap_P_LATP_Grb", "Sos"], self.rate_constants.k_zap_off_R,
-                                        self.rate_constants.k_zap_on_R)
-
-            #
-            # self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP_Grb_Sos", "Ras_GDP"],
-            #                             ["R" + i + "_species_Sos_Ras_GDP"],
-            #                             0.00027, 0.004)
-
-            self.create_loop(["R" + i + "_species_Sos_Ras_GDP"], ["RP" + i + "_Lck_Zap_P_LATP_Grb_Sos", "Ras_GTP"],
-                             0.0005)
-
-            # # allosteric binding
-            self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP_Grb_Sos", "Ras_GTP"],
-                                        ["R" + i + "_species_Sos_Ras_GTP"], self.rate_constants.k_ras_on_species,
-                                        self.rate_constants.k_ras_off_species)
-
-            self.modify_forward_reverse(["R" + i + "_species_Sos_Ras_GTP", "Ras_GDP"],
-                                        ["R" + i + "_species_Sos_Ras_GTP_Ras_GDP"],
-                                        0.05, 0.1)
-
-            no_ligand = self.ligand_off("R" + i + "_species_Sos_Ras_GTP_Ras_GDP", i)
-            self.modify_forward_reverse([no_ligand], ["RP_Lck_Zap_P_LATP_Grb", "Sos"], self.rate_constants.k_zap_off_R,
-                                        self.rate_constants.k_zap_on_R)
-
-            self.create_loop(["R" + i + "_species_Sos_Ras_GTP_Ras_GDP"], ["R" + i + "_species_Sos_Ras_GTP", "Ras_GTP"],
-                             0.038)
-
-            self.record_append("Ras_GTP")
-            count += 1
+            self.create_loop([i + "_LATP", i + "_Product"], [i + "_Product", i + "_Product"],
+                             self.rate_constants.k_positive_loop)
 
     def add_cycle(self, cycle):
         self.increment_step()
@@ -494,109 +452,87 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
             self.record_append(final_product)
             count += 1
 
-    # def add_cycle_1(self):
+    # def cycle_7(self, i, count):
+    #     final_product = "RP" + i + "_Lck_Zap_P_LATP"
+    #     self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LAT"], [final_product],
+    #                                 self.rate_constants.k_p_lat_on_species, self.rate_constants.k_p_lat_off_species)
+    #     no_ligand = self.ligand_off(final_product, i)
+    #
+    #     if count == 0:
+    #         no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
+    #         no_zap_p = self.dephosphorylate_zap(no_lck)
+    #         no_rp_zap = self.rp_zap_off(no_zap_p)
+    #         self.dephosphorylate_lat(no_rp_zap)
+    #
+    #     return final_product
+    #
+    # def cycle_8(self, i, count):
+    #     final_product = "RP" + i + "_Lck_Zap_P_LATP_Grb"
+    #     self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP", "Grb"], [final_product],
+    #                                 self.rate_constants.k_grb_on_species, self.rate_constants.k_grb_off_species)
+    #     no_ligand = self.ligand_off(final_product, i)
+    #
+    #     if count == 0:
+    #         no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
+    #         no_zap_p = self.dephosphorylate_zap(no_lck)
+    #         no_rp_zap = self.rp_zap_off(no_zap_p)
+    #         self.grb_off(no_rp_zap)
+    #
+    #     return final_product
+    #
+    # def cycle_9(self, i, count):
+    #     final_product = "RP" + i + "_Lck_Zap_P_LATP_Grb_Sos"
+    #     self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP_Grb", "Sos"], [final_product],
+    #                                 self.rate_constants.k_sos_on_species, self.rate_constants.k_sos_off_species)
+    #     no_ligand = self.ligand_off(final_product, i)
+    #
+    #     if count == 0:
+    #         no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
+    #         no_zap_p = self.dephosphorylate_zap(no_lck)
+    #         no_rp_zap = self.rp_zap_off(no_zap_p)
+    #         self.sos_off(no_rp_zap)
+    #
+    #     return final_product
+    #
+    # def add_positive_feedback(self):
     #     self.increment_step()
     #     count = 0
     #     for i in self.output:
-    #         final_product = "R" + i + "_Lck"
-    #         self.modify_forward_reverse(["R" + i, "Lck"], [final_product], self.rate_constants.k_lck_on_R_pmhc,
-    #                                     self.rate_constants.k_lck_off_R_pmhc)
-    #         no_ligand = self.ligand_off(final_product, i)
+    #         # catalytic binding
+    #         self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP_Grb_Sos", "Ras_GDP"],
+    #                                     ["R" + i + "_species_Sos_Ras_GDP"],
+    #                                     self.rate_constants.k_ras_on_species, self.rate_constants.k_ras_off_species)
     #
-    #         if count == 0:
-    #             self.lck_off(no_ligand, self.rate_constants.k_lck_off_R)
+    #         # proofreading of Sos-Ras_GDP complex
+    #         no_ligand = self.ligand_off("R" + i + "_species_Sos_Ras_GDP", i)
+    #         self.modify_forward_reverse([no_ligand], ["RP_Lck_Zap_P_LATP_Grb", "Sos"], self.rate_constants.k_zap_off_R,
+    #                                     self.rate_constants.k_zap_on_R)
     #
-    #         self.record_append(final_product)
-    #         count += 1
-
-    # def add_cycle_2(self):
-    #     self.increment_step()
-    #     count = 0
-    #     for i in self.output:
-    #         final_product = "RP" + i + "_Lck"
-    #         self.modify_forward_reverse(["R" + i + "_Lck"], [final_product], self.rate_constants.k_p_on_R_pmhc,
-    #                                     self.rate_constants.k_p_off_R_pmhc)
+    #         #
+    #         # self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP_Grb_Sos", "Ras_GDP"],
+    #         #                             ["R" + i + "_species_Sos_Ras_GDP"],
+    #         #                             0.00027, 0.004)
     #
-    #         no_ligand = self.ligand_off(final_product, i)
+    #         self.create_loop(["R" + i + "_species_Sos_Ras_GDP"], ["RP" + i + "_Lck_Zap_P_LATP_Grb_Sos", "Ras_GTP"],
+    #                          0.0005)
     #
-    #         # New pathway back
-    #         if count == 0:
-    #             no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_RP)
+    #         # # allosteric binding
+    #         self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP_Grb_Sos", "Ras_GTP"],
+    #                                     ["R" + i + "_species_Sos_Ras_GTP"], self.rate_constants.k_ras_on_species,
+    #                                     self.rate_constants.k_ras_off_species)
     #
-    #             self.modify_forward_reverse([no_lck], ["R"], self.rate_constants.k_p_off_R,
-    #                                         self.rate_constants.k_p_on_R)
+    #         self.modify_forward_reverse(["R" + i + "_species_Sos_Ras_GTP", "Ras_GDP"],
+    #                                     ["R" + i + "_species_Sos_Ras_GTP_Ras_GDP"],
+    #                                     0.05, 0.1)
     #
-    #         self.record_append(final_product)
-    #         count += 1
-
-    # def add_cycle_3(self):
-    #     self.increment_step()
-    #     count = 0
-    #     for i in self.output:
-    #         final_product = "RP" + i + "_Lck_Zap"
-    #         self.modify_forward_reverse(["RP" + i + "_Lck", "Zap"], [final_product],
-    #                                     self.rate_constants.k_zap_on_R_pmhc,
-    #                                     self.rate_constants.k_zap_off_R_pmhc)
-    #         no_ligand = self.ligand_off(final_product, i)
+    #         no_ligand = self.ligand_off("R" + i + "_species_Sos_Ras_GTP_Ras_GDP", i)
+    #         self.modify_forward_reverse([no_ligand], ["RP_Lck_Zap_P_LATP_Grb", "Sos"], self.rate_constants.k_zap_off_R,
+    #                                     self.rate_constants.k_zap_on_R)
     #
-    #         # New pathway back
-    #         if count == 0:
-    #             no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
+    #         self.create_loop(["R" + i + "_species_Sos_Ras_GTP_Ras_GDP"], ["R" + i + "_species_Sos_Ras_GTP", "Ras_GTP"],
+    #                          0.038)
     #
-    #             self.zap_off(no_lck)
-    #
-    #         # self.record.append(''.join(["RP_Lck_Zap"]))
-    #         self.record_append(final_product)
-    #         count += 1
-
-    # def add_cycle_4(self):
-    #     self.increment_step()
-    #     count = 0
-    #     for i in self.output:
-    #         final_product = "RP" + i + "_Lck_Zap_P"
-    #         self.modify_forward_reverse(["RP" + i + "_Lck_Zap"], [final_product],
-    #                                     self.rate_constants.k_p_on_zap_species, self.rate_constants.k_p_off_zap_species)
-    #         no_ligand = self.ligand_off(final_product, i)
-    #
-    #         if count == 0:
-    #             no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
-    #             self.dephosphorylate_zap(no_lck)
-    #
-    #         self.record_append(final_product)
-    #         count += 1
-
-    # def add_cycle_6(self):
-    #     self.increment_step()
-    #     count = 0
-    #     for i in self.output:
-    #         final_product = "RP" + i + "_Lck_Zap_P_LAT"
-    #         self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P", "LAT"], [final_product],
-    #                                     self.rate_constants.k_p_on_zap_species, self.rate_constants.k_p_off_zap_species)
-    #
-    #         no_ligand = self.ligand_off(final_product, i)
-    #
-    #         if count == 0:
-    #             no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
-    #             no_zap_p = self.dephosphorylate_zap(no_lck)
-    #             self.rp_zap_off(no_zap_p)
-    #
-    #         count += 1
-
-    # def add_cycle_7(self):
-    #     self.increment_step()
-    #     count = 0
-    #     for i in self.output:
-    #         final_product = "RP" + i + "_Lck_Zap_P_LATP"
-    #         self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LAT"], [final_product],
-    #                                     self.rate_constants.k_p_lat_on_species, self.rate_constants.k_p_lat_off_species)
-    #         no_ligand = self.ligand_off(final_product, i)
-    #
-    #         if count == 0:
-    #             no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
-    #             no_zap_p = self.dephosphorylate_zap(no_lck)
-    #             latp = self.rp_zap_off(no_zap_p)
-    #             self.dephosphorylate_lat(latp)
-    #
+    #         self.record_append("Ras_GTP")
     #         count += 1
 
 
@@ -707,18 +643,23 @@ class KPRealistic(KPSingleSpecies):
 
         self.record = self.ligand.record
 
-        self.run_time = 100
-        self.simulation_time = 3
+        self.run_time = 1000
+        self.simulation_time = 7
 
         self.file_list = []
 
     def wait_for_simulations(self):
         while True:
             list1 = []
+            false_list = []
 
             for file_path in self.file_list:
                 list1.append(os.path.isfile(file_path))
-                print(str(list1))
+
+                if not os.path.isfile(file_path):
+                    false_list.append(file_path)
+
+            print("{0} files remaining".format(len(false_list)))
 
             if all(list1):
                 # All elements are True. Therefore all the files exist. Run %run commands
@@ -749,13 +690,13 @@ class KPRealistic(KPSingleSpecies):
                                                     cwd=os.getcwd()).communicate()
             os.chdir(self.home_directory)
 
+        np.savetxt("Ligand_concentrations", sample, fmt='%f')
+        np.savetxt("Ligand_concentrations_sorted", np.sort(sample), fmt='%f')
+
         if run:
             self.wait_for_simulations()
             output = PlotOutputHist()
             output.compute_output()
-
-        np.savetxt("Ligand_concentrations", sample, fmt='%f')
-        np.savetxt("Ligand_concentrations_sorted", np.sort(sample), fmt='%f')
 
 
 def make_and_cd(directory_name):
@@ -811,67 +752,17 @@ if __name__ == "__main__":
     if args.steps > 5:
         kp.ligand.add_cycle(kp.ligand.cycle_6)
     if args.steps > 6:
-        kp.ligand.add_cycle(kp.ligand.cycle_7)
+        kp.ligand.add_step_7()
     if args.steps > 7:
-        kp.ligand.add_cycle(kp.ligand.cycle_8)
+        kp.ligand.add_step_8()
     if args.steps > 8:
-        kp.ligand.add_cycle(kp.ligand.cycle_9)
+        kp.ligand.add_positive_feedback()
 
-    # if "Ls_Lf" in os.getcwd():
-    #     kp = KPRealistic(self_foreign=True, arguments=args)
-    #     if "Ls_Lf_100" in os.getcwd():
-    #         kp.ligand.n_initial["Lf"] = 100
-    #     elif "Ls_Lf_20" in os.getcwd():
-    #         kp.ligand.n_initial["Lf"] = 20
-    # elif "Ls" in os.getcwd():
-    #     kp = KPRealistic(arguments=args)
-    # else:
-    #     raise Exception("Incorrect Directory labeling. Specify (Ls, Ls_Lf)")
-
-    # kp.ligand.add_step_0()
-    # if "1_step" in os.getcwd():
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    # elif "2_step" in os.getcwd():
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_2)
-    # elif "3_step" in os.getcwd():
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_2)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_3)
-    # elif "4_step" in os.getcwd():
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_2)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_3)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_4)
-    # elif "5_step" in os.getcwd():
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_2)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_3)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_4)
-    #     kp.ligand.add_negative_feedback()
-    # elif "6_step" in os.getcwd():
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_2)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_3)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_4)
-    #     kp.ligand.add_negative_feedback()
-    #     kp.ligand.add_cycle(kp.ligand.cycle_6)
-    # elif "7_step" in os.getcwd():
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_2)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_3)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_4)
-    #     kp.ligand.add_negative_feedback()
-    #     kp.ligand.add_cycle(kp.ligand.cycle_6)
+    # if args.steps > 6:
     #     kp.ligand.add_cycle(kp.ligand.cycle_7)
-    # elif "8_step" in os.getcwd():
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_2)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_3)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_4)
-    #     kp.ligand.add_negative_feedback()
-    #     kp.ligand.add_cycle(kp.ligand.cycle_6)
-    #     kp.ligand.add_cycle(kp.ligand.cycle_7)
+    # if args.steps > 7:
     #     kp.ligand.add_cycle(kp.ligand.cycle_8)
+    # if args.steps > 8:
+    #     kp.ligand.add_cycle(kp.ligand.cycle_9)
 
     kp.main_script(run=args.run)
