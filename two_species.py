@@ -374,7 +374,8 @@ class KPSingleSpecies(object):
         q.write("done\n\n")
         q.write("python ~/SSC_python_modules/post_process.py --num_files {0} "
                 "--run_time {1} --time_step {2}\n".format(self.num_files, self.run_time, time_step))
-        # q.write("python ~/SSC_python_modules/plot.py --steps {0}\n".format(self.num_kp_steps))
+        if self.arguments.ss:
+            q.write("python ~/SSC_python_modules/plot.py \n")
         q.close()
 
     def generate(self, simulation_name, time_step):
