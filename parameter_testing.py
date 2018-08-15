@@ -4,21 +4,16 @@ import subprocess
 import time
 
 import numpy as np
+import pandas as pd
 from matplotlib import pyplot as plt
 
 from post_process import load
-from realistic_network import TcrCycleForeignLigand, TcrCycleSelfLigand
+from realistic_network import TcrCycleSelfLigand, make_and_cd, TcrCycleSelfWithForeign
 from two_species import KPSingleSpecies
 
 
 def lognuniform(low=0, high=1, size=None, base=10):
     return np.power(base, np.random.uniform(low, high, size))
-
-def make_and_cd(directory_name):
-    os.makedirs(directory_name)
-    print("Made " + directory_name)
-    os.chdir(directory_name)
-    print("Changed into directory: " + str(os.getcwd()))
 
 
 def plot_eta_previous(file_path, eta_class):
@@ -75,12 +70,16 @@ class PlotEta(object):
 class KPParameterTest(KPSingleSpecies):
     def __init__(self, self_foreign=False, arguments=None):
         KPSingleSpecies.__init__(self, self_foreign=self_foreign, arguments=arguments)
-        # self.run_time = 500
 
         if self.self_foreign_flag:
-            self.ligand = TcrCycleForeignLigand(arguments=arguments)
+            print("initializing Self and Foreign")
+            self.ligand = TcrCycleSelfWithForeign(arguments=arguments)
         else:
+            print("initializing Self Only")
             self.ligand = TcrCycleSelfLigand(arguments=arguments)
+
+        self.ligand.n_initial["Ls"] = 250
+        self.run_time = 2000
 
         self.forward_rates = self.ligand.forward_rates
         self.forward_rxns = self.ligand.forward_rxns
@@ -103,7 +102,7 @@ class ParameterTesting(object):
             y = self.parameter_list[-1:]
             self.parameter_list = [x[0], y[0]]
 
-        self.ligand_directories = ["Lf", "Ls"]
+        self.ligand_directories = ["Ls_Lf", "Ls"]
 
         self.file_list = []
 
@@ -125,7 +124,7 @@ class ParameterTesting(object):
             list1 = []
 
             for file_path in self.file_list:
-                list1.append(os.path.isfile(file_path))
+                list1.append(os.path.isfile(file_path + "mean_traj"))
                 print(str(list1))
 
             if all(list1):
@@ -139,12 +138,12 @@ class ParameterTesting(object):
         sub_directory = os.getcwd()
 
         for ligand_directory in self.ligand_directories:
-            if ligand_directory == "Lf":
+            if ligand_directory == "Ls_Lf":
                 kp_ligand = KPParameterTest(self_foreign=True, arguments=self.arguments)
-                self.foreign_file_list.append("{0}/mean_traj".format(ligand_directory))
+                self.foreign_file_list.append("{0}/".format(ligand_directory))
             else:
                 kp_ligand = KPParameterTest(arguments=self.arguments)
-                self.self_file_list.append("{0}/mean_traj".format(ligand_directory))
+                self.self_file_list.append("{0}/".format(ligand_directory))
 
             self.file_list = self.foreign_file_list + self.self_file_list
             make_and_cd(ligand_directory)
@@ -163,8 +162,6 @@ class ParameterTesting(object):
         if run:
             self.wait_for_simulations()
             self.compute_hopfield_error()
-            compute_output(self.foreign_file_list)
-            compute_output(self.self_file_list)
 
     @staticmethod
     def change_parameter(kp_ligand, parameter):
@@ -178,12 +175,12 @@ class ParameterTesting(object):
             sub_directory = os.getcwd()
 
             for ligand_directory in self.ligand_directories:
-                if ligand_directory == "Lf":
+                if ligand_directory == "Ls_Lf":
                     kp_ligand = KPParameterTest(self_foreign=True, arguments=self.arguments)
-                    self.foreign_file_list.append("{0}/{1}/mean_traj".format(dir_name, ligand_directory))
+                    self.foreign_file_list.append("{0}/{1}/".format(dir_name, ligand_directory))
                 else:
                     kp_ligand = KPParameterTest(arguments=self.arguments)
-                    self.self_file_list.append("{0}/{1}/mean_traj".format(dir_name, ligand_directory))
+                    self.self_file_list.append("{0}/{1}/".format(dir_name, ligand_directory))
 
                 self.file_list = self.foreign_file_list + self.self_file_list
                 make_and_cd(ligand_directory)
@@ -209,38 +206,82 @@ class ParameterTesting(object):
 
         if run:
             self.wait_for_simulations()
-            self.compute_hopfield_error()
-            compute_output(self.foreign_file_list)
-            compute_output(self.self_file_list)
+            self.compute_hopfield_error(parameter_test=True)
 
-    def compute_hopfield_error(self):
+    def check_columns(self, file_path):
+        column_names = load(file_path + "column_names")[0].split()
+        if "Ls_Lf" in self.ligand_directories:
+            if "Lf" in column_names[-1] or "Ls" in column_names[-1]:
+                self_foreign = True
+            else:
+                self_foreign = False
+        else:
+            self_foreign = False
+        return self_foreign
+
+    def compute_hopfield_error(self, parameter_test=False):
         eta_array = []
+        self_output = []
+        foreign_output = []
+
+        ligand_output = self.check_columns(self.foreign_file_list[0])
         for i in range(len(self.self_file_list)):
-            self_trajectory = np.loadtxt(self.self_file_list[i])
-            foreign_trajectory = np.loadtxt(self.foreign_file_list[i])
+            self_trajectory = np.loadtxt(self.self_file_list[i] + "mean_traj")
+            self_output.append(self_trajectory[-1])
 
-            eta_array.append(self_trajectory[-1] / foreign_trajectory[-1])
+            foreign_trajectory = np.loadtxt(self.foreign_file_list[i] + "mean_traj")
+            if ligand_output:
+                eta_array.append(self_trajectory[-1] / (foreign_trajectory[-1] + foreign_trajectory[-2]))
+                foreign_output.append(foreign_trajectory[-1] + foreign_trajectory[-2])
+            else:
+                eta_array.append(self_trajectory[-1] / foreign_trajectory[-1])
+                foreign_output.append(foreign_trajectory[-1])
 
-        np.savetxt("eta", eta_array, fmt='%f')
+        print("All arrays processed.")
+        if parameter_test:
+            d = {"rates": self.parameter_list, "eta": eta_array, "Lf_output": foreign_output, "Ls_output": self_output}
+        else:
+            d = {"eta": eta_array, "Lf_output": foreign_output, "Ls_output": self_output}
+        df = pd.DataFrame(data=d)
+
+        df.to_csv("eta", "\t", float_format='%.6f')
+
+        # np.savetxt("eta", eta_array, fmt='%f')
+        # np.savetxt("Lf_output", foreign_output, fmt='%f')
+        # np.savetxt("Ls_output", self_output, fmt='%f')
 
     def process_output(self):
-        for i in range(len(self.parameter_list)):
-            dir_name = "parameter_{0}".format(i)
-            for ligand_directory in self.ligand_directories:
-                if ligand_directory == "Lf":
-                    self.foreign_file_list.append("{0}/{1}/mean_traj".format(dir_name, ligand_directory))
-                else:
-                    self.self_file_list.append("{0}/{1}/mean_traj".format(dir_name, ligand_directory))
+        # for i in range(len(self.parameter_list)):
+        #     dir_name = "parameter_{0}".format(i)
+        for ligand_directory in self.ligand_directories:
+            if ligand_directory == "Ls_Lf":
+                self.foreign_file_list.append("{0}/".format(ligand_directory))
+            else:
+                self.self_file_list.append("{0}/".format(ligand_directory))
 
         self.compute_hopfield_error()
-        compute_output(self.foreign_file_list)
-        compute_output(self.self_file_list)
+
+
+# def compute_output(file_list):
+#     output_array = []
+#     for path in file_list:
+#         try:
+#             trajectory = np.loadtxt(path + "mean_traj")
+#             if "parameter_0" in path:
+#                 print(path)
+#             output_array.append(trajectory[-1])
+#         except:
+#             print("Error at {0}".format(path))
+#     if "Lf" in file_list[0]:
+#         np.savetxt("Lf_output", output_array, fmt='%f')
+#     elif "Ls" in file_list[0]:
+#         np.savetxt("Ls_output", output_array, fmt='%f')
 
 
 class ParameterTestingSecondOrder(ParameterTesting):
     def __init__(self, arguments=None):
         ParameterTesting.__init__(self, arguments=arguments)
-        self.parameter_list = [float(i) for i in np.sort(lognuniform(low=-4, high=2, size=20))]
+        self.parameter_list = [float(i) for i in np.sort(lognuniform(low=-6, high=-3, size=10))]
 
         if self.arguments.ss or self.arguments.test:
             x = self.parameter_list[:1]
@@ -249,23 +290,41 @@ class ParameterTestingSecondOrder(ParameterTesting):
 
     def add_steps(self, kp_ligand):
         if self.arguments.steps > 0:
-            kp_ligand.ligand.add_cycle_1()
+            kp_ligand.ligand.add_cycle(kp_ligand.ligand.cycle_1)
         if self.arguments.steps > 1:
-            kp_ligand.ligand.add_cycle_2()
+            kp_ligand.ligand.add_cycle(kp_ligand.ligand.cycle_2)
         if self.arguments.steps > 2:
-            kp_ligand.ligand.add_cycle_3()
+            kp_ligand.ligand.add_cycle(kp_ligand.ligand.cycle_3)
         if self.arguments.steps > 3:
-            kp_ligand.ligand.add_cycle_4()
+            kp_ligand.ligand.add_cycle(kp_ligand.ligand.cycle_4)
+        if self.arguments.steps > 4:
+            kp_ligand.ligand.add_negative_feedback()
+        if self.arguments.steps > 5:
+            kp_ligand.ligand.add_cycle(kp_ligand.ligand.cycle_6)
+        if self.arguments.steps > 6:
+            kp_ligand.ligand.add_step_7()
+        if self.arguments.steps > 7:
+            kp_ligand.ligand.add_step_8()
+        if self.arguments.steps > 8:
+            kp_ligand.ligand.add_positive_feedback()
+        # if self.arguments.steps > 6:
+        #     kp_ligand.ligand.add_cycle(kp_ligand.ligand.cycle_7)
+        # if self.arguments.steps > 7:
+        #     kp_ligand.ligand.add_cycle(kp_ligand.ligand.cycle_8)
+        # if self.arguments.steps > 8:
+        #     kp_ligand.ligand.add_cycle(kp_ligand.ligand.cycle_9)
+        # if self.arguments.steps > 9:
+        #     kp_ligand.ligand.add_positive_feedback()
 
     @staticmethod
     def change_parameter(kp_ligand, parameter):
-        kp_ligand.ligand.rate_constants.k_negative_loop = parameter
+        kp_ligand.ligand.rate_constants.k_positive_loop = parameter
 
 
 class ParameterTestingSecondOrderNumbers(ParameterTestingSecondOrder):
     def __init__(self, arguments=None):
         ParameterTestingSecondOrder.__init__(self, arguments=arguments)
-        self.parameter_list = [int(i) for i in np.sort(lognuniform(low=2, high=4, size=20))]
+        self.parameter_list = [int(i) for i in np.sort(lognuniform(low=1, high=4, size=10))]
 
         if self.arguments.ss or self.arguments.test:
             x = self.parameter_list[:1]
@@ -274,23 +333,7 @@ class ParameterTestingSecondOrderNumbers(ParameterTestingSecondOrder):
 
     @staticmethod
     def change_parameter(kp_ligand, parameter):
-        kp_ligand.ligand.n_initial["Zap"] = parameter
-
-
-def compute_output(file_list):
-    output_array = []
-    for path in file_list:
-        try:
-            trajectory = np.loadtxt(path)
-            if "parameter_0" in path:
-                print(path)
-            output_array.append(trajectory[-1])
-        except:
-            print("Error at {0}".format(path))
-    if "Lf" in file_list[0]:
-        np.savetxt("Lf_output", output_array, fmt='%f')
-    elif "Ls" in file_list[0]:
-        np.savetxt("Ls_output", output_array, fmt='%f')
+        kp_ligand.ligand.n_initial["LAT"] = parameter
 
 
 if __name__ == "__main__":
@@ -306,17 +349,22 @@ if __name__ == "__main__":
                         help="flag for testing.")
     parser.add_argument('--steps', dest='steps', action='store', type=int, default=3,
                         help="number of KP steps.")
+    parser.add_argument('--ls_lf', dest='ls_lf', action='store', type=int, default=20,
+                        help="number of foreign ligands.")
 
     args = parser.parse_args()
-    print(str(args.steps))
-
-    directory_name = "{0}_step_check".format(args.steps)
-    make_and_cd(directory_name)
+    # print(str(args.steps))
 
     kp_parameter_testing = ParameterTestingSecondOrder(arguments=args)
     # kp_parameter_testing.process_output()
 
     if args.p_test:
+        directory_name = "{0}_step_p_test".format(args.steps)
+        make_and_cd(directory_name)
+
         kp_parameter_testing.parameter_testing(run=args.run)
     else:
+        directory_name = "{0}_step".format(args.steps)
+        make_and_cd(directory_name)
+
         kp_parameter_testing.simple_kp(run=args.run)
