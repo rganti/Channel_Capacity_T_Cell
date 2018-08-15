@@ -1,5 +1,4 @@
 #!/usr/bin/python
-import argparse
 import os
 
 import matplotlib.pyplot as plt
@@ -8,24 +7,41 @@ import numpy as np
 from post_process import load
 
 
+def check_columns(file_path):
+    column_names = load(file_path + "column_names")[0].split()
+    if "Lf" in column_names[-1] or "Ls" in column_names[-1]:
+        self_foreign = True
+    else:
+        self_foreign = False
+
+    return self_foreign
+
+
 class PlotOutputHist(object):
     def __init__(self):
-        self.column_names = load("sample_0/column_names")
+        self.column_names = load("sample_0/column_names")[0].split()
         print(self.column_names)
 
     def compute_output(self):
         output_array = []
+        self_foreign = check_columns("sample_0/")
         for i in range(1000):
             try:
                 trajectory = np.loadtxt("sample_{0}/mean_traj".format(i))
                 if len(trajectory.shape) == 1:
                     if "Ls_Lf" in os.getcwd():
-                        if i == 0:
-                            print("Self and Foreign")
-                        output_array.append(trajectory[-1] + trajectory[-2])
+                        if self_foreign:
+                            if i == 0:
+                                print(self.column_names[-1] + " + " + self.column_names[-2])
+                            output_array.append(trajectory[-1] + trajectory[-2])
+                        else:
+                            if i == 0:
+                                print(self.column_names[-1])
+                            output_array.append(trajectory[-1])
                     else:
                         if i == 0:
-                            print("Only Self")
+                            # print("Only Self")
+                            print(self.column_names[-1])
                         output_array.append(trajectory[-1])
                 else:
                     output_array.append(trajectory[-1, -1])
@@ -57,20 +73,6 @@ class PlotLigandHist(object):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Submitting job for calculating P(C0) as function of steps",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--self_foreign', action='store_true', default=False,
-                        help='Flag for setting type')
-    args = parser.parse_args()
 
     output = PlotOutputHist()
     output.compute_output()
-    # output.plot_hist()
-    # plt.savefig("output.pdf", format='pdf')
-    #
-    # ligand = PlotLigandHist()
-    # ligand.plot_hist()
-    # plt.legend()
-    #
-    # plt.savefig("lf_output.pdf", format='pdf')
-    # plt.close()
