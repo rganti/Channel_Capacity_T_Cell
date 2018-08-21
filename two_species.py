@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import argparse
+import datetime
 import os
 import subprocess
 
@@ -299,7 +300,7 @@ class KPSingleSpecies(object):
     def set_time_step(self):
         if self.arguments:
             if self.arguments.ss:
-                time_step = 0.1
+                time_step = 1.0
             else:
                 time_step = self.run_time
         else:
@@ -359,7 +360,9 @@ class KPSingleSpecies(object):
         q.write("#PBS -m ae\n")
         q.write("#PBS -q short\n")
         q.write("#PBS -V\n")
-        q.write("#PBS -l walltime=00:0{1}:00,nodes=1:ppn=1 -N {0}\n\n".format(simulation_name, self.simulation_time))
+        q.write("#PBS -l walltime={1},nodes=1:ppn=1 -N {0}\n\n".format(simulation_name,
+                                                                       datetime.timedelta(
+                                                                           minutes=self.simulation_time)))
         q.write("cd $PBS_O_WORKDIR\n\n")
         q.write("echo $PBS_JOBID > job_id\n")
         q.write("EXE_FILE={0}\n".format(simulation_name))
