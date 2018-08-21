@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import os
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 
 from post_process import load
@@ -25,6 +25,7 @@ class PlotOutputHist(object):
     def compute_output(self):
         output_array = []
         self_foreign = check_columns("sample_0/")
+        count = 0
         for i in range(1000):
             try:
                 trajectory = np.loadtxt("sample_{0}/mean_traj".format(i))
@@ -47,13 +48,15 @@ class PlotOutputHist(object):
                     output_array.append(trajectory[-1, -1])
             except:
                 print("Error at sample_{0}".format(i))
+                count += 1
+        print(str(count))
         np.savetxt("output", output_array, fmt='%f')
         return output_array
 
-    def plot_hist(self):
-        output = self.compute_output()
-        count, bins, _ = plt.hist(output, 100, align='mid', normed=True, label='P(O)')
-        return count
+    # def plot_hist(self):
+    #     output = self.compute_output()
+    #     count, bins, _ = plt.hist(output, 100, align='mid', normed=True, label='P(O)')
+    #     return count
 
 
 class PlotLigandHist(object):
@@ -61,8 +64,8 @@ class PlotLigandHist(object):
         self.ligand_concentration = np.loadtxt("Ligand_concentrations")
         self.num_bins = 100
 
-    def plot_hist(self):
-        count, bins, _ = plt.hist(self.ligand_concentration, self.num_bins, align='mid', normed=True, label='P(Lf)')
+    # def plot_hist(self):
+    #     count, bins, _ = plt.hist(self.ligand_concentration, self.num_bins, align='mid', normed=True, label='P(Lf)')
 
         # mu = 6.0
         # sigma = 1.0
