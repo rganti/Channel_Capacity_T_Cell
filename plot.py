@@ -125,23 +125,16 @@ class PlotKP(object):
 
 class PlotSecondOrder(object):
 
-    def __init__(self, filename, directory="./"):
+    def __init__(self, directory="./"):
         self.column_names = load_columns(directory + "column_names")
-        self.data = np.loadtxt(filename)
+        self.data = np.loadtxt(directory + "mean_traj")
 
         self.time_index = find_index(self.column_names, "time")
         self.time = self.data[:, self.time_index]
 
-        # self.Lf_index = find_index(self.column_names, "Ls")
-        # self.Lf = self.data[:, self.Lf_index]
-        #
-        # self.CN_index = find_index(self.column_names, "D0")
-        # self.CN = self.data[:, self.CN_index]
-
-    def plot_concentrations(self):
-        # for i in range(1, len(self.column_names)):
-        plt.plot(self.time, self.data[:, -1], label=self.column_names[-1], linestyle='-', marker='o')
-        plt.plot(self.time, self.data[:, -2], label=self.column_names[-2], linestyle='-', marker='o')
+    def plot_concentrations(self, index=1500):
+        plt.plot(self.time[-index:], self.data[-index:, -1], label=self.column_names[-1], linestyle='-', marker='o')
+        plt.plot(self.time[-index:], self.data[-index:, -2], label=self.column_names[-2], linestyle='-', marker='o')
 
     def plot_analytical(self):
         Lf = self.second_order.n_initial["Lf"]
@@ -289,7 +282,7 @@ if __name__ == "__main__":
     # plotkp.error_fraction()
     # plotkp.save_plot()
 
-    second_order = PlotSecondOrder("mean_traj")
+    second_order = PlotSecondOrder()
     second_order.save_plot()
 
 
