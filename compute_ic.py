@@ -9,8 +9,8 @@ from post_process import load
 
 class InformationCapacity(object):
 
-    def __init__(self, num_steps, self_directory="./", foreign_directory="./", estimator='fd', limiting='foreign'):
-        self.num_steps = num_steps
+    def __init__(self, self_directory="./", foreign_directory="./", estimator='fd', limiting='foreign'):
+        self.num_steps = 1
         self.foreign_output = np.loadtxt(foreign_directory + "output")
         self.foreign_ligand = np.loadtxt(foreign_directory + "Ligand_concentrations")
         self.self_output = np.loadtxt(self_directory + "output")
@@ -19,9 +19,15 @@ class InformationCapacity(object):
         if os.path.exists(foreign_directory + "sample_0/column_names"):
             self.foreign_column = load(foreign_directory + "sample_0/column_names")
             self.foreign_column_names = self.foreign_column[0].split()
+        elif os.path.exists(foreign_directory + "column_names"):
+            self.foreign_column = load(foreign_directory + "column_names")
+            self.foreign_column_names = self.foreign_column[0].split()
 
         if os.path.exists(self_directory + "sample_0/column_names"):
             self.self_column = load(self_directory + "sample_0/column_names")
+            self.self_column_names = self.self_column[0].split()
+        elif os.path.exists(self_directory + "column_names"):
+            self.self_column = load(self_directory + "column_names")
             self.self_column_names = self.self_column[0].split()
 
         if limiting == 'foreign':
@@ -41,8 +47,10 @@ class InformationCapacity(object):
 
     def plot_cn(self):
         if self.foreign_column_names:
-            if "Lf" in self.foreign_column_names and "Ls" in self.foreign_column_names:
-                label = 'P(' + self.foreign_column_names[-2] + " + " + self.foreign_column_names[-1] + ')'
+            if len(self.foreign_column_names) > 1:
+                if ("Lf" in self.foreign_column_names[-2] or "Lf" in self.foreign_column_names[-1]) and \
+                        ("Ls" in self.foreign_column_names[-2] or "Ls" in self.foreign_column_names[-1]):
+                    label = 'P(' + self.foreign_column_names[-2] + " + " + self.foreign_column_names[-1] + ')'
             else:
                 label = 'P(' + self.foreign_column_names[-1] + ')'
         else:
@@ -78,7 +86,6 @@ class InformationCapacity(object):
     #     kl_cn_dn = np.nan_to_num(np.log2(count_cn/count_dn))
     #     kl_cn_dn = np.trapz(count_cn * np.nan_to_num(np.log2(count_cn/count_dn)), dx=bin_width)
     #     return kl_cn_dn
-
 
     def calculate_ic(self):
         count_cn = self.count_cn()
