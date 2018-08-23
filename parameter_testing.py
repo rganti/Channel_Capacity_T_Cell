@@ -30,7 +30,7 @@ class KPParameterTest(KPSingleSpecies):
         if self.arguments.run:
             self.run_time = self.arguments.run
         else:
-            self.run_time = 100
+            self.run_time = 4000
 
         self.forward_rates = self.ligand.forward_rates
         self.forward_rxns = self.ligand.forward_rxns
@@ -272,7 +272,7 @@ def make_and_cd_p_test(directory_name):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Submitting job for calculating P(C0) as function of steps",
+    parser = argparse.ArgumentParser(description="Submitting job for parameter testing",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--run', dest='run', action='store', type=int,
                         help='Flag for submitting simulations.')
