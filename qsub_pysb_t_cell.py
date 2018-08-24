@@ -53,7 +53,7 @@ if __name__ == "__main__":
     if args.steps == 9:
         make_and_cd("{0}_step_k_pos_{1}".format(args.steps, binding_parameters.k_positive_loop))
     else:
-        make_and_cd("{0}_step_k_neg_{1}".format(args.steps, binding_parameters.k_negative_loop))
+        make_and_cd("{0}_step".format(args.steps))
 
     sub_directories = ["Ls", "Ls_Lf_{0}".format(args.lf)]
     home_directory = os.getcwd()
