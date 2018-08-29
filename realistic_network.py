@@ -18,14 +18,14 @@ class BindingParameters(object):
         self.k_self_off = 10.0 * self.k_foreign_off
 
         # First Cycle Lck binding
-        self.k_lck_on_R_pmhc = self.k_foreign_off / 10.0
+        self.k_lck_on_R_pmhc = self.k_foreign_off / 100.0
         self.k_lck_off_R_pmhc = self.k_foreign_off / 50.0
 
         self.k_lck_on_R = 1.0 / 100000.0
         self.k_lck_off_R = 20.0
 
         # Second Cycle Lck phosphorylation
-        self.k_p_on_R_pmhc = 10.0
+        self.k_p_on_R_pmhc = 10.0 / 10.0
         self.k_p_off_R_pmhc = 0.01  # self.k_foreign_off / 10.0
 
         self.k_lck_on_RP = 1.0 / 100000.0
@@ -37,7 +37,7 @@ class BindingParameters(object):
         # all of the above seems to work for 2nd order kinetics
 
         # Third Cycle Zap binding
-        self.k_zap_on_R_pmhc = self.k_lck_on_R_pmhc
+        self.k_zap_on_R_pmhc = self.k_foreign_off / 100.0  # self.k_lck_on_R_pmhc
         self.k_zap_off_R_pmhc = self.k_lck_off_R_pmhc
 
         self.k_lck_on_zap_R = self.k_lck_on_RP
@@ -55,10 +55,10 @@ class BindingParameters(object):
 
         # Fifth Negative Feedback Loop
 
-        self.k_negative_loop = 2.0
+        self.k_negative_loop = 20.0
 
         # # Sixth LAT on
-        self.k_lat_on_species = self.k_lck_on_R_pmhc / 100.0
+        self.k_lat_on_species = self.k_foreign_off / 100.0  # self.k_lck_on_R_pmhc / 100.0  # self.k_foreign_off / 10.0
         self.k_lat_off_species = self.k_lck_off_R_pmhc
 
         self.k_lat_on_rp_zap = self.k_zap_on_R
@@ -73,7 +73,7 @@ class BindingParameters(object):
         self.k_product_off = self.k_p_off_R_pmhc
 
         # Ninth: Positive Feedback Loop
-        self.k_positive_loop = 0.001
+        self.k_positive_loop = 0.0005
 
         self.k_p_on_lat = self.k_p_on_R_pmhc / 10000.0
         self.k_p_off_lat = 20.0
@@ -382,7 +382,7 @@ class KPRealistic(KPSingleSpecies):
 
         self.record = self.ligand.record
 
-        self.run_time = 4000
+        self.run_time = 1000
         self.simulation_time = self.set_simulation_time()
 
         self.file_list = []
@@ -462,7 +462,7 @@ if __name__ == "__main__":
                         help="number of KP steps.")
     parser.add_argument('--ls', action='store_true', default=False,
                         help="flag for submitting Ls calculations.")
-    parser.add_argument('--ls_lf', dest='ls_lf', action='store', type=int, default=20,
+    parser.add_argument('--ls_lf', dest='ls_lf', action='store', type=int, default=30,
                         help="number of foreign ligands.")
     args = parser.parse_args()
 
@@ -491,8 +491,8 @@ if __name__ == "__main__":
         kp.ligand.add_cycle(kp.ligand.cycle_3)
     if args.steps > 3:
         kp.ligand.add_cycle(kp.ligand.cycle_4)
-    if args.steps > 4:
-        kp.ligand.add_negative_feedback()
+    # if args.steps > 4:
+    #     kp.ligand.add_negative_feedback()
     if args.steps > 5:
         kp.ligand.add_cycle(kp.ligand.cycle_6)
     if args.steps > 6:
