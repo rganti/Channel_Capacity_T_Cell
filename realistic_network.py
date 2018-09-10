@@ -6,7 +6,6 @@ import time
 
 import numpy as np
 
-from plot_histograms import PlotOutputHist
 from two_species import KPSingleSpecies
 
 
@@ -18,15 +17,15 @@ class BindingParameters(object):
         self.k_self_off = 10.0 * self.k_foreign_off
 
         # First Cycle Lck binding
-        self.k_lck_on_R_pmhc = self.k_foreign_off / 100.0
-        self.k_lck_off_R_pmhc = self.k_foreign_off / 50.0
+        self.k_lck_on_R_pmhc = 0.001  # / 200 # self.k_foreign_off / 100.0
+        self.k_lck_off_R_pmhc = self.k_foreign_off / 40.0
 
         self.k_lck_on_R = 1.0 / 100000.0
         self.k_lck_off_R = 20.0
 
         # Second Cycle Lck phosphorylation
-        self.k_p_on_R_pmhc = 10.0 / 10.0
-        self.k_p_off_R_pmhc = 0.01  # self.k_foreign_off / 10.0
+        self.k_p_on_R_pmhc = 2.0
+        self.k_p_off_R_pmhc = self.k_foreign_off / 40.0  # self.k_foreign_off / 10.0
 
         self.k_lck_on_RP = 1.0 / 100000.0
         self.k_lck_off_RP = 20.0
@@ -34,10 +33,8 @@ class BindingParameters(object):
         self.k_p_on_R = 1.0 / 100000.0
         self.k_p_off_R = 20.0
 
-        # all of the above seems to work for 2nd order kinetics
-
         # Third Cycle Zap binding
-        self.k_zap_on_R_pmhc = self.k_foreign_off / 100.0  # self.k_lck_on_R_pmhc
+        self.k_zap_on_R_pmhc = 0.001  # self.k_lck_on_R_pmhc # self.k_foreign_off / 100.0  # self.k_lck_on_R_pmhc
         self.k_zap_off_R_pmhc = self.k_lck_off_R_pmhc
 
         self.k_lck_on_zap_R = self.k_lck_on_RP
@@ -58,7 +55,7 @@ class BindingParameters(object):
         self.k_negative_loop = 20.0
 
         # # Sixth LAT on
-        self.k_lat_on_species = self.k_foreign_off / 100.0  # self.k_lck_on_R_pmhc / 100.0  # self.k_foreign_off / 10.0
+        self.k_lat_on_species = 0.001 / 200  # self.k_lck_on_R_pmhc / 200 # self.k_lck_on_R_pmhc / 100.0  # self.k_foreign_off / 100.0
         self.k_lat_off_species = self.k_lck_off_R_pmhc
 
         self.k_lat_on_rp_zap = self.k_zap_on_R
@@ -73,7 +70,7 @@ class BindingParameters(object):
         self.k_product_off = self.k_p_off_R_pmhc
 
         # Ninth: Positive Feedback Loop
-        self.k_positive_loop = 0.0005
+        self.k_positive_loop = 0.0025
 
         self.k_p_on_lat = self.k_p_on_R_pmhc / 10000.0
         self.k_p_off_lat = 20.0
@@ -140,7 +137,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
     def __init__(self, arguments=None):
         TcrSelfWithForeign.__init__(self, arguments=arguments)
 
-        self.n_initial = {"R": 10000, "Lck": 2000, "Zap": 3000, "LAT": 1000, "Lf": self.arguments.ls_lf, "Ls": 1000}
+        self.n_initial = {"R": 10000, "Lck": 2000, "Zap": 2000, "LAT": 2000, "Lf": self.arguments.ls_lf, "Ls": 1000}
         # "Grb": 150, "Sos": 150, "Ras_GDP": 100,
         self.record = ["Lf", "Ls"]
         self.output = ["Lf", "Ls"]
@@ -310,7 +307,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
     def add_step_7(self):
         self.increment_step()
         for i in self.output:
-            final_product = i + "_LATP"
+            final_product = "LATP"
             self.create_loop(["RP" + i + "_Lck_Zap_P_LAT"], ["RP" + i + "_Lck_Zap_P", final_product],
                              self.rate_constants.k_p_lat_on_species)
             self.create_loop([final_product], ["LAT"], self.rate_constants.k_p_lat_off_species)
@@ -318,11 +315,22 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
     def add_step_8(self):
         self.increment_step()
-        for i in self.output:
-            final_product = i + "_Product"
-            self.modify_forward_reverse([i + "_LATP"], [final_product], self.rate_constants.k_product_on,
-                                        self.rate_constants.k_product_off)
-            self.record_append(final_product)
+        final_product = "final_product"
+        self.modify_forward_reverse(["LATP"], [final_product], self.rate_constants.k_product_on,
+                                    self.rate_constants.k_product_off)
+        self.record_append(final_product)
+
+        # self.increment_step()
+        # for i in self.output:
+        #     final_product = i + "_Product"
+        #     self.modify_forward_reverse([i + "_LATP"], [final_product], self.rate_constants.k_product_on,
+        #                                 self.rate_constants.k_product_off)
+        #     self.record_append(final_product)
+
+    def add_nonspecific_positive_fb(self):
+        self.increment_step()
+        self.create_loop(["LATP", "final_product"], ["final_product", "final_product"],
+                         self.rate_constants.k_positive_loop)
 
     def add_positive_feedback(self):
         self.increment_step()
@@ -382,6 +390,7 @@ class KPRealistic(KPSingleSpecies):
 
         self.record = self.ligand.record
 
+        self.num_files = 1000
         self.run_time = 1000
         self.simulation_time = self.set_simulation_time()
 
@@ -437,10 +446,10 @@ class KPRealistic(KPSingleSpecies):
         np.savetxt("Ligand_concentrations", sample, fmt='%f')
         np.savetxt("Ligand_concentrations_sorted", np.sort(sample), fmt='%f')
 
-        if run:
-            self.wait_for_simulations()
-            output = PlotOutputHist()
-            output.compute_output()
+        # if run:
+        #     self.wait_for_simulations()
+        #     output = PlotOutputHist()
+        #     output.compute_output()
 
 
 def make_and_cd(directory_name):
@@ -466,7 +475,7 @@ if __name__ == "__main__":
                         help="number of foreign ligands.")
     args = parser.parse_args()
 
-    directory_name = "{0}_step_long".format(args.steps)
+    directory_name = "{0}_step".format(args.steps)
     make_and_cd(directory_name)
 
     if args.ls:
@@ -500,6 +509,6 @@ if __name__ == "__main__":
     if args.steps > 7:
         kp.ligand.add_step_8()
     if args.steps > 8:
-        kp.ligand.add_positive_feedback()
+        kp.ligand.add_nonspecific_positive_fb()
 
     kp.main_script(run=args.run)
