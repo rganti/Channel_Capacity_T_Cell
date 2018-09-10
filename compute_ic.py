@@ -11,15 +11,20 @@ class InformationCapacity(object):
 
     def __init__(self, self_directory="./", foreign_directory="./", estimator='fd', limiting='foreign'):
         self.num_steps = 1
+        self.foreign_directory = foreign_directory
+        self.self_directory = self_directory
+
         self.foreign_output = np.loadtxt(foreign_directory + "output")
         self.foreign_ligand = np.loadtxt(foreign_directory + "Ligand_concentrations")
         self.self_output = np.loadtxt(self_directory + "output")
         self.self_ligand = np.loadtxt(self_directory + "Ligand_concentrations")
 
         if os.path.exists(foreign_directory + "sample_0/column_names"):
+            print("Loaded foreign column names")
             self.foreign_column = load(foreign_directory + "sample_0/column_names")
             self.foreign_column_names = self.foreign_column[0].split()
         elif os.path.exists(foreign_directory + "column_names"):
+            print("Loaded foreign column names")
             self.foreign_column = load(foreign_directory + "column_names")
             self.foreign_column_names = self.foreign_column[0].split()
 
@@ -46,15 +51,18 @@ class InformationCapacity(object):
         return count_cn
 
     def plot_cn(self):
-        if self.foreign_column_names:
+        if os.path.exists(self.foreign_directory + "sample_0/column_names") or \
+                os.path.exists(self.foreign_directory + "column_names"):
             if len(self.foreign_column_names) > 1:
                 if ("Lf" in self.foreign_column_names[-2] or "Lf" in self.foreign_column_names[-1]) and \
                         ("Ls" in self.foreign_column_names[-2] or "Ls" in self.foreign_column_names[-1]):
                     label = 'P(' + self.foreign_column_names[-2] + " + " + self.foreign_column_names[-1] + ')'
+                else:
+                    label = 'P(' + self.foreign_column_names[-1] + self.foreign_column_names[-2] + ')'
             else:
                 label = 'P(' + self.foreign_column_names[-1] + ')'
         else:
-            label = 'P(C{0})'.format(self.num_steps - 1)
+            label = 'P(C{0} + D{0})'.format(self.num_steps - 1)
         count, bins, _ = plt.hist(self.foreign_output, bins=self.bins, align='mid', normed=True,
                                   label=label)
 
@@ -67,7 +75,8 @@ class InformationCapacity(object):
         return count_dn
 
     def plot_dn(self):
-        if self.self_column_names:
+        if os.path.exists(self.self_directory + "sample_0/column_names") or \
+                os.path.exists(self.self_directory + "column_names"):
             label = 'P(' + self.self_column_names[-1] + ')'
         else:
             label = 'P(D{0})'.format(self.num_steps - 1)
