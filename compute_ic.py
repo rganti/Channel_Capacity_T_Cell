@@ -3,6 +3,7 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.stats import iqr
 
 from post_process import load
 
@@ -46,9 +47,27 @@ class InformationCapacity(object):
         count, bins = np.histogram(self.limiting_output, bins=estimator, density=True)
         return bins
 
+    # def kde_plot(self):
+    #     sns.distplot(self.foreign_output, hist=True, kde=True,
+    #                  bins=self.bins, label="Lf Ls")
+    #     sns.distplot(self.self_output, hist=True, kde=True,
+    #                  bins=self.bins, label="Ls")
+    #     plt.legend()
+    # sns.distplot(self.foreign_output, hist=True, kde=True,
+    #              bins=self.bins, color='darkblue',
+    #              hist_kws={'edgecolor': 'black'},
+    #              kde_kws={'linewidth': 4})
+
     def count_cn(self):
         count_cn, bins = np.histogram(self.foreign_output, bins=self.bins, density=True)
+
         return count_cn
+
+    def cn_mean_iqr(self):
+        mean = np.mean(self.foreign_output)
+        cn_iqr = iqr(self.foreign_output)
+
+        return mean, cn_iqr
 
     def plot_cn(self):
         if os.path.exists(self.foreign_directory + "sample_0/column_names") or \
@@ -58,7 +77,7 @@ class InformationCapacity(object):
                         ("Ls" in self.foreign_column_names[-2] or "Ls" in self.foreign_column_names[-1]):
                     label = 'P(' + self.foreign_column_names[-2] + " + " + self.foreign_column_names[-1] + ')'
                 else:
-                    label = 'P(' + self.foreign_column_names[-1] + self.foreign_column_names[-2] + ')'
+                    label = 'P(' + self.foreign_column_names[-1] + ')'
             else:
                 label = 'P(' + self.foreign_column_names[-1] + ')'
         else:
@@ -73,6 +92,11 @@ class InformationCapacity(object):
     def count_dn(self):
         count_dn, bins = np.histogram(self.self_output, bins=self.bins, density=True)
         return count_dn
+
+    def dn_mean_iqr(self):
+        mean = np.mean(self.self_output)
+        dn_iqr = iqr(self.self_output)
+        return mean, dn_iqr
 
     def plot_dn(self):
         if os.path.exists(self.self_directory + "sample_0/column_names") or \
@@ -165,9 +189,7 @@ def check_binning():
 
 
 if __name__ == "__main__":
-    num_steps = 2
-
-    ic = InformationCapacity(num_steps)
+    ic = InformationCapacity()
     ic.calculate_ic()
     ic.alternate_calculate_ic()
     # check_binning()
