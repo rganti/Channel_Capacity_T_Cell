@@ -2,6 +2,8 @@ import argparse
 import os
 import subprocess
 
+from post_process import load
+
 
 def restart_simulations(run=False):
     home_directory = os.getcwd()
@@ -13,12 +15,12 @@ def restart_simulations(run=False):
             count += 1
 
             if run:
-                # qsub = load("qsub.sh")
-                # qsub[3] = qsub[3].replace("00:11:00", "00:14:00")
-                # qsub_file = open("qsub.sh", "w")
-                # for item in qsub:
-                #     qsub_file.write("{0}".format(item))
-                # qsub_file.close()
+                qsub = load("qsub.sh")
+                qsub[3] = qsub[3].replace("0:15:00", "0:45:00")
+                qsub_file = open("qsub.sh", "w")
+                for item in qsub:
+                    qsub_file.write("{0}".format(item))
+                qsub_file.close()
 
                 (stdout, stderr) = subprocess.Popen(["qsub {0}".format("qsub.sh")], shell=True, stdout=subprocess.PIPE,
                                                     cwd=os.getcwd()).communicate()
