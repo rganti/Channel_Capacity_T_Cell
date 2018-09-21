@@ -54,7 +54,7 @@ class BindingParameters(object):
 
         self.k_negative_loop = 20.0
 
-        # # Sixth LAT on
+        # Sixth LAT on
         self.k_lat_on_species = 0.001 / 200  # self.k_lck_on_R_pmhc / 200 # self.k_lck_on_R_pmhc / 100.0  # self.k_foreign_off / 100.0
         self.k_lat_off_species = self.k_lck_off_R_pmhc
 
@@ -306,16 +306,17 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
     def add_step_7(self):
         self.increment_step()
+        final_product = "LATP"
         for i in self.output:
-            final_product = "LATP"
             self.create_loop(["RP" + i + "_Lck_Zap_P_LAT"], ["RP" + i + "_Lck_Zap_P", final_product],
                              self.rate_constants.k_p_lat_on_species)
-            self.create_loop([final_product], ["LAT"], self.rate_constants.k_p_lat_off_species)
-            self.record_append(final_product)
+
+        self.create_loop([final_product], ["LAT"], self.rate_constants.k_p_lat_off_species)
+        self.record_append(final_product)
 
     def add_step_8(self):
         self.increment_step()
-        final_product = "final_product"
+        final_product = "Final_Product"
         self.modify_forward_reverse(["LATP"], [final_product], self.rate_constants.k_product_on,
                                     self.rate_constants.k_product_off)
         self.record_append(final_product)
@@ -329,7 +330,8 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
     def add_nonspecific_positive_fb(self):
         self.increment_step()
-        self.create_loop(["LATP", "final_product"], ["final_product", "final_product"],
+        final_product = "Final_Product"
+        self.create_loop(["LATP", final_product], [final_product, final_product],
                          self.rate_constants.k_positive_loop)
 
     def add_positive_feedback(self):
@@ -397,7 +399,7 @@ class KPRealistic(KPSingleSpecies):
         self.file_list = []
 
     def set_simulation_time(self):
-        simulation_time = self.run_time * (15.0 / 1000)
+        simulation_time = self.run_time * (60.0 / 1000)
 
         return simulation_time
 
