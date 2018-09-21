@@ -60,8 +60,7 @@ class PysbTcrSelfWithForeign(object):
 
         if self.p_flag:
             self.parameters = pickle.load(open("parameters.pickle", "rb"))
-
-        print(self.parameters)
+            print(self.parameters)
 
         self.p_ligand = [int(i) for i in np.round(np.random.lognormal(self.mu, self.sigma, self.num_samples))]
 
@@ -77,13 +76,15 @@ class PysbTcrSelfWithForeign(object):
         Monomer('Zap')
         Monomer('LAT')
         Monomer('Grb')
+        Monomer('Sos')
 
         Parameter('R_0', 10000)
         Parameter('Ls_0', self.ls)
         Parameter('Lck_0', 2000)
         Parameter('Zap_0', 2000)
         Parameter('LAT_0', 2000)
-        Parameter('Grb_0', 100)
+        Parameter('Grb_0', 500)
+        Parameter('Sos_0', 500)
 
         Initial(R(), R_0)
         Initial(Ls(), Ls_0)
@@ -91,6 +92,20 @@ class PysbTcrSelfWithForeign(object):
         Initial(Zap(), Zap_0)
         Initial(LAT(), LAT_0)
         Initial(Grb(), Grb_0)
+        Initial(Sos(), Sos_0)
+
+        # Positive Feedback loop
+        Monomer('Ras_GDP')
+        Monomer('Ras_GTP')
+        Monomer('Ras_GAP')
+
+        Parameter('Ras_GDP_0', 300)
+        Parameter('Ras_GAP_0', 10)
+        Parameter('Ras_GTP_0', 0)
+
+        Initial(Ras_GDP(), Ras_GDP_0)
+        Initial(Ras_GAP(), Ras_GAP_0)
+        Initial(Ras_GTP(), Ras_GTP_0)
 
         if "Lf" in self.output:
             Monomer('Lf')
@@ -339,20 +354,151 @@ class PysbTcrSelfWithForeign(object):
     #
     #     return product
 
-    def non_specific_step_8(self, i):
+    # def non_specific_step_8(self, i):
+    #
+    #     if i == "Ls":
+    #         Parameter('k_product_on', self.rate_constants.k_product_on)
+    #
+    #     previous_product = self.non_specific_step_7(i)
+    #     product = "final_product"
+    #     if i == "Ls":
+    #         add_new_monomer(product)
+    #         Rule("{0}_convert".format(product), eval('{0}()'.format(previous_product)) | eval('{0}()'.format(product)),
+    #              k_product_on, k_p_off_R_pmhc)
+    #         add_observable(product)
+    #
+    #     return product
 
-        if i == "Ls":
-            Parameter('k_product_on', self.rate_constants.k_product_on)
+    def add_step_8_sos(self, i):
 
         previous_product = self.non_specific_step_7(i)
-        product = "final_product"
+        product = "LATP_Sos"
+
         if i == "Ls":
+            if self.p_flag:
+                Parameter('k_grb_on', self.parameters['k_8_1'])
+            else:
+                Parameter('k_grb_on', 0.002)
+
+            Parameter('k_grb_off', 0.005)
+
             add_new_monomer(product)
-            Rule("{0}_convert".format(product), eval('{0}()'.format(previous_product)) | eval('{0}()'.format(product)),
-                 k_product_on, k_p_off_R_pmhc)
+            Rule("{0}_bind".format(product),
+                 eval('{0}()'.format(previous_product)) + Sos() | eval('{0}()'.format(product)),
+                 k_grb_on, k_grb_off)
             add_observable(product)
 
         return product
+
+    def add_step_9(self, i):
+        previous_product = self.add_step_8_sos(i)
+        product_rd = previous_product + "_Ras_GDP"
+
+        if i == "Ls":
+            Parameter('k_sos_on_rgdp', 0.0024)
+            Parameter('k_sos_off_rgdp', 3.0)
+
+            add_new_monomer(product_rd)
+
+            Rule('{0}_bind'.format(product_rd),
+                 eval('{0}()'.format(previous_product)) + Ras_GDP() | eval('{0}()'.format(product_rd)),
+                 k_sos_on_rgdp, k_sos_off_rgdp)
+
+        product_rt = previous_product + "_Ras_GTP"
+
+        if i == "Ls":
+            Parameter('k_sos_on_rgtp', 0.0022)
+            Parameter('k_sos_off_rgtp', 0.4)
+
+            add_new_monomer(product_rt)
+
+            Rule('{0}_bind'.format(product_rt),
+                 eval('{0}()'.format(previous_product)) + Ras_GTP() | eval('{0}()'.format(product_rt)),
+                 k_sos_on_rgtp, k_sos_off_rgtp)
+
+        return product_rd, product_rt
+
+    def add_step_10(self, i):
+        previous_product_rd, previous_product_rt = self.add_step_9(i)
+        product_rt_rd = previous_product_rt + "_Ras_GDP"
+
+        if i == "Ls":
+            Parameter('k_rgdp_on_sos_rgtp', 0.001)
+            Parameter('k_rgdp_off_sos_rgtp', 0.1)
+            Parameter('k_cat_3', 0.038 * 1.7)
+
+            add_new_monomer(product_rt_rd)
+
+            Rule('{0}_bind'.format(product_rt_rd),
+                 eval('{0}()'.format(previous_product_rt)) + Ras_GDP() | eval('{0}()'.format(product_rt_rd)),
+                 k_rgdp_on_sos_rgtp, k_rgdp_off_sos_rgtp)
+
+            Rule('{0}_cat'.format(product_rt_rd),
+                 eval('{0}()'.format(product_rt_rd)) >> eval('{0}()'.format(previous_product_rt)) + Ras_GTP(),
+                 k_cat_3)
+
+        product_rd_rd = previous_product_rd + "_Ras_GDP"
+
+        if i == "Ls":
+            Parameter('k_rgdp_on_sos_rgdp', 0.0014)
+            Parameter('k_rgdp_off_sos_rgdp', 1.0)
+            Parameter('k_cat_4', 0.003)
+
+            add_new_monomer(product_rd_rd)
+
+            Rule('{0}_bind'.format(product_rd_rd),
+                 eval('{0}()'.format(previous_product_rd)) + Ras_GDP() | eval('{0}()'.format(product_rd_rd)),
+                 k_rgdp_on_sos_rgdp, k_rgdp_off_sos_rgdp)
+
+            Rule('{0}_cat'.format(product_rd_rd),
+                 eval('{0}()'.format(product_rd_rd)) >> eval('{0}()'.format(previous_product_rd)) + Ras_GTP(),
+                 k_cat_4)
+
+        # Deactivate - convert Ras_GTP to Ras_GDP
+
+        product = "Ras_GAP_Ras_GTP"
+        new_product = "Ras_GTP"
+
+        if i == "Ls":
+            Parameter('k_rgap_on_rgtp', 0.0348)
+            Parameter('k_rgap_off_rgtp', 0.2)
+            Parameter('k_cat_5', 0.1)
+
+            add_new_monomer(product)
+
+            Rule('{0}_bind'.format(product),
+                 Ras_GAP() + Ras_GTP() | eval('{0}()'.format(product)),
+                 k_rgap_on_rgtp, k_rgap_off_rgtp)
+
+            add_observable(product)
+
+            Rule('{0}_cat'.format(product),
+                 eval('{0}()'.format(product)) >> Ras_GAP() + Ras_GDP(),
+                 k_cat_5)
+
+            add_observable(new_product)
+
+        return new_product
+
+    # def add_step_9_sos(self, i):
+    #
+    #     previous_product = self.add_step_8_sos(i)
+    #     product = "LATP_Grb_Sos"
+    #
+    #     if i == "Ls":
+    #         if self.p_flag:
+    #             Parameter('k_sos_on', self.parameters['k_9_1'])
+    #         else:
+    #             Parameter('k_sos_on', 0.0002)
+    #
+    #         Parameter('k_sos_off', 0.005)
+    #
+    #         add_new_monomer(product)
+    #         Rule("{0}_bind".format(product), eval('{0}()'.format(previous_product)) + Sos() | eval('{0}()'.format(product)),
+    #              k_sos_on, k_sos_off)
+    #         add_observable(product)
+    #
+    #     return product
 
     # def add_step_8(self, i):
     #
@@ -418,14 +564,17 @@ class PysbTcrSelfWithForeign(object):
             elif self.steps == 6:
                 product = self.cycle_6(i)
             elif self.steps == 7:
-                # product = self.add_step_7(i)
                 product = self.non_specific_step_7(i)
             elif self.steps == 8:
-                # product = self.add_step_8(i)
-                product = self.non_specific_step_8(i)
+                product = self.add_step_8_sos(i)
             else:
-                # product = self.add_positive_feedback(i)
-                product = self.add_positive_feedback_nonspecific(i)
+                product = self.add_step_10(i)
+
+                # product = self.add_step_9_sos(i)
+                # product = self.non_specific_step_8(i)
+            # else:
+            #     # product = self.add_positive_feedback(i)
+            #     product = self.add_positive_feedback_nonspecific(i)
 
             if "O_{0}".format(product) not in observables:
                 observables.append("O_{0}".format(product))
