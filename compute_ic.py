@@ -36,15 +36,16 @@ class InformationCapacity(object):
             self.self_column = load(self_directory + "column_names")
             self.self_column_names = self.self_column[0].split()
 
-        if limiting == 'foreign':
-            self.limiting_output = self.foreign_output
-        else:
-            self.limiting_output = self.self_output
-
         self.bins = self.calculate_bins(estimator)
 
     def calculate_bins(self, estimator):
-        count, bins = np.histogram(self.limiting_output, bins=estimator, density=True)
+        count, self_bins = np.histogram(self.self_output, bins=estimator, density=True)
+        count, foreign_bins = np.histogram(self.foreign_output, bins=estimator, density=True)
+
+        bin_width = self_bins[1] - self_bins[0]
+
+        bins = np.arange(min(self_bins), max(foreign_bins), bin_width)
+
         return bins
 
     # def kde_plot(self):
