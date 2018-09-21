@@ -23,8 +23,8 @@ class LaunchQsub(object):
         q.write("#PBS -l walltime={1},nodes=1:ppn=2 -N {0}\n\n".format(self.simulation_name,
                                                                        datetime.timedelta(
                                                                            minutes=self.simulation_time)))
-        q.write("cd $PBS_O_WORKDIR\n\n")
-        q.write("echo $PBS_JOBID > job_id\n")
+        q.write("cd $PBS_O_WORKDIR\n")
+        q.write("echo $PBS_JOBID > job_id\n\n")
 
         if self.self_foreign:
             q.write(
@@ -44,7 +44,7 @@ if __name__ == "__main__":
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--steps', dest='steps', action='store', type=int, default=8,
                         help="number of KP steps.")
-    parser.add_argument('--lf', dest='lf', action='store', type=int, default=30,
+    parser.add_argument('--lf', dest='lf', action='store', type=int, default=50,
                         help="number of foreign ligands.")
 
     args = parser.parse_args()
@@ -52,8 +52,8 @@ if __name__ == "__main__":
     binding_parameters = BindingParameters()
 
     if args.steps == 9:
-        make_and_cd("{0}_step_k_pos_{1}".format(args.steps, binding_parameters.k_positive_loop))
-        # make_and_cd("{0}_step".format(args.steps))
+        # make_and_cd("{0}_step_k_pos_{1}".format(args.steps, binding_parameters.k_positive_loop))
+        make_and_cd("{0}_step".format(args.steps))
     else:
         make_and_cd("{0}_step".format(args.steps))
 
