@@ -11,31 +11,36 @@ if __name__ == "__main__":
                         help="number of KP steps.")
     parser.add_argument('--fb', dest='fb', action='store', type=float)
     parser.add_argument('--d', dest='d', action='store', type=str)
+    parser.add_argument('--xhi', dest='xhi', action='store', type=float, default=10.0)
+    parser.add_argument('--xlo', dest='xlo', action='store', type=float, default=0.0)
 
     args = parser.parse_args()
     steps = args.steps
-    lf = 30
+    xlo = args.xlo
+    xhi = args.xhi
+    lf = 50
 
     # if steps > 8:
     #     if args.fb:
     #         file_path = "{0}_step_k_pos_{1}/".format(steps, args.fb)
     #     else:
     #         file_path = "{0}_step/".format(steps)
-    if args.d:
-        file_path = args.d
-    else:
-        file_path = "{0}_step/".format(steps)
+    # if args.d:
+    #     file_path = args.d
+    # else:
+    #     file_path = "{0}_step/".format(steps)
 
-    ic_lf = InformationCapacity(foreign_directory=file_path + "Ls_Lf_{0}/".format(lf),
-                                self_directory=file_path + "Ls/",
+    ic_lf = InformationCapacity(foreign_directory="Ls_Lf_{0}/".format(lf),
+                                self_directory="Ls/",
                                 limiting="self")
     ic_lf.plot_cn()
     ic_lf.plot_dn()
     plt.legend()
 
     print("[L_f] = 30")
-    plt.xlim(0, 10)
+    plt.xlim(xlo, xhi)
+    plt.ylim(0, 1)
 
     plt.title("{0} Steps: IC = {1}".format(steps, ic_lf.calculate_ic()))
 
-    plt.savefig(file_path + "histograms.pdf", format="pdf")
+    plt.savefig("histograms.pdf", format="pdf")
