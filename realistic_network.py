@@ -9,6 +9,19 @@ import numpy as np
 from two_species import KPSingleSpecies
 
 
+class InitialConcentrations(object):
+    def __init__(self):
+        self.r_0 = 30000
+        self.lck_0 = 30000
+        self.zap_0 = 1200000
+
+        self.lat_0 = 150000
+        self.sos_0 = 500
+
+        self.ras_gdp_0 = 300
+        self.ras_gap_0 = 10
+
+
 class BindingParameters(object):
     def __init__(self):
         # Zeroth Cycle ligand binding
@@ -17,14 +30,14 @@ class BindingParameters(object):
         self.k_self_off = 10.0 * self.k_foreign_off
 
         # First Cycle Lck binding
-        self.k_lck_on_R_pmhc = 0.001  # / 200 # self.k_foreign_off / 100.0
+        self.k_lck_on_R_pmhc = 0.001 / 5.0  # / 200 # self.k_foreign_off / 100.0
         self.k_lck_off_R_pmhc = self.k_foreign_off / 40.0
 
         self.k_lck_on_R = 1.0 / 100000.0
         self.k_lck_off_R = 20.0
 
         # Second Cycle Lck phosphorylation
-        self.k_p_on_R_pmhc = 2.0
+        self.k_p_on_R_pmhc = 2.0 / 5.0
         self.k_p_off_R_pmhc = self.k_foreign_off / 40.0  # self.k_foreign_off / 10.0
 
         self.k_lck_on_RP = 1.0 / 100000.0
@@ -34,36 +47,63 @@ class BindingParameters(object):
         self.k_p_off_R = 20.0
 
         # Third Cycle Zap binding
-        self.k_zap_on_R_pmhc = 0.001  # self.k_lck_on_R_pmhc # self.k_foreign_off / 100.0  # self.k_lck_on_R_pmhc
+        self.k_zap_on_R_pmhc = 0.001 / 5.0  # self.k_lck_on_R_pmhc # self.k_foreign_off / 100.0  # self.k_lck_on_R_pmhc
         self.k_zap_off_R_pmhc = self.k_lck_off_R_pmhc
 
         self.k_lck_on_zap_R = self.k_lck_on_RP
-        self.k_lck_off_zap_R = 0.3
+        self.k_lck_off_zap_R = 20.0
 
         self.k_zap_on_R = 1.0 / 100000.0
         self.k_zap_off_R = 20.0
 
         # Fourth Cycle phosphorylate zap
-        self.k_p_on_zap_species = self.k_p_on_R_pmhc
+        self.k_p_on_zap_species = 2.0 / 10.0
         self.k_p_off_zap_species = self.k_p_off_R_pmhc
 
         self.k_lck_on_zap_p = self.k_lck_on_RP
         self.k_lck_off_zap_p = self.k_lck_off_zap_R
 
         # Fifth Negative Feedback Loop
-
         self.k_negative_loop = 20.0
 
         # Sixth LAT on
-        self.k_lat_on_species = 0.001 / 200  # self.k_lck_on_R_pmhc / 200 # self.k_lck_on_R_pmhc / 100.0  # self.k_foreign_off / 100.0
+        self.k_lat_on_species = 0.01
+        # self.k_lck_on_R_pmhc / 200 # self.k_lck_on_R_pmhc / 100.0  # self.k_foreign_off / 100.0
         self.k_lat_off_species = self.k_lck_off_R_pmhc
 
         self.k_lat_on_rp_zap = self.k_zap_on_R
         self.k_lat_off_rp_zap = 20.0
 
         # Seventh LAT phosphorylation
-        self.k_p_lat_on_species = 0.008  # self.k_p_on_zap_species / 100
+        self.k_p_lat_on_species = 0.1  # self.k_p_on_zap_species / 100
         self.k_p_lat_off_species = self.k_p_off_R_pmhc
+
+        # Eighth Sos on
+        self.k_sos_on = 0.0008
+        self.k_sos_off = 0.005
+
+        # Ninth Sos RasGDP and RasGTP
+        self.k_sos_on_rgdp = 0.0024
+        self.k_sos_off_rgdp = 3.0
+
+        self.k_sos_on_rgtp = 0.0022
+        self.k_sos_off_rgtp = 0.4
+
+        # Tenth
+        # sos_rgtp + rgdp
+        self.k_rgdp_on_sos_rgtp = 0.001
+        self.k_rgdp_off_sos_rgtp = 0.1
+        self.k_cat_3 = 0.038 * 2.5
+
+        # sos_rgdp + rgdp
+        self.k_rgdp_on_sos_rgdp = 0.0014
+        self.k_rgdp_off_sos_rgdp = 1.0
+        self.k_cat_4 = 0.003
+
+        # rgap + rgtp -> rgdp
+        self.k_rgap_on_rgtp = 0.0348
+        self.k_rgap_off_rgtp = 0.2
+        self.k_cat_5 = 0.1
 
         # Eighth LAT -> final product
         self.k_product_on = 0.008
@@ -138,7 +178,6 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         TcrSelfWithForeign.__init__(self, arguments=arguments)
 
         self.n_initial = {"R": 10000, "Lck": 2000, "Zap": 2000, "LAT": 2000, "Lf": self.arguments.ls_lf, "Ls": 1000}
-        # "Grb": 150, "Sos": 150, "Ras_GDP": 100,
         self.record = ["Lf", "Ls"]
         self.output = ["Lf", "Ls"]
 
@@ -334,11 +373,11 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         self.create_loop(["LATP", final_product], [final_product, final_product],
                          self.rate_constants.k_positive_loop)
 
-    def add_positive_feedback(self):
-        self.increment_step()
-        for i in self.output:
-            self.create_loop([i + "_LATP", i + "_Product"], [i + "_Product", i + "_Product"],
-                             self.rate_constants.k_positive_loop)
+    # def add_positive_feedback(self):
+    #     self.increment_step()
+    #     for i in self.output:
+    #         self.create_loop([i + "_LATP", i + "_Product"], [i + "_Product", i + "_Product"],
+    #                          self.rate_constants.k_positive_loop)
 
     def add_cycle(self, cycle):
         self.increment_step()
@@ -350,6 +389,53 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
             count += 1
 
 
+class SscPositiveFbLoop(TcrCycleSelfWithForeign):
+    def __init__(self, arguments=None):
+        TcrCycleSelfWithForeign.__init__(self, arguments=arguments)
+        self.n_initial["Sos"] = 500
+        self.n_initial["Ras_GDP"] = 300
+        self.n_initial["Ras_GAP"] = 10
+
+    def add_step_8(self):
+        self.increment_step()
+        final_product = "LATP_Sos"
+        self.modify_forward_reverse(["LATP", "Sos"], [final_product], self.rate_constants.k_sos_on,
+                                    self.rate_constants.k_sos_off)
+        self.record_append(final_product)
+
+    def add_step_9(self):
+        self.increment_step()
+        final_product_1 = "LATP_Sos_Ras_GDP"
+        self.modify_forward_reverse(["LATP_Sos", "Ras_GDP"], [final_product_1], self.rate_constants.k_sos_on_rgdp,
+                                    self.rate_constants.k_sos_off_rgdp)
+
+        final_product_2 = "LATP_Sos_Ras_GTP"
+        self.modify_forward_reverse(["LATP_Sos", "Ras_GTP"], [final_product_2], self.rate_constants.k_sos_on_rgtp,
+                                    self.rate_constants.k_sos_off_rgtp)
+
+    def add_step_10(self):
+        self.increment_step()
+        previous_product_1 = "LATP_Sos_Ras_GTP"
+        final_product_1 = previous_product_1 + "_Ras_GDP"
+        self.modify_forward_reverse([previous_product_1, "Ras_GDP"], [final_product_1],
+                                    self.rate_constants.k_rgdp_on_sos_rgtp,
+                                    self.rate_constants.k_rgdp_off_sos_rgtp)
+        self.create_loop([final_product_1], [previous_product_1, "Ras_GTP"], self.rate_constants.k_cat_3)
+
+        previous_product_2 = "LATP_Sos_Ras_GDP"
+        final_product_2 = previous_product_2 + "_Ras_GDP"
+        self.modify_forward_reverse([previous_product_2, "Ras_GDP"], [final_product_2],
+                                    self.rate_constants.k_rgdp_on_sos_rgdp,
+                                    self.rate_constants.k_rgdp_off_sos_rgdp)
+        self.create_loop([final_product_2], [previous_product_2, "Ras_GTP"], self.rate_constants.k_cat_4)
+
+        product_3 = "Ras_GAP_Ras_GTP"
+        self.modify_forward_reverse(["Ras_GAP", "Ras_GTP"], [product_3],
+                                    self.rate_constants.k_rgap_on_rgtp,
+                                    self.rate_constants.k_rgap_off_rgtp)
+        self.create_loop([product_3], ["Ras_GAP", "Ras_GDP"], self.rate_constants.k_cat_5)
+
+
 class TcrCycleForeignLigand(TcrCycleSelfWithForeign):
     def __init__(self, arguments=None):
         TcrCycleSelfWithForeign.__init__(self, arguments)
@@ -357,8 +443,17 @@ class TcrCycleForeignLigand(TcrCycleSelfWithForeign):
         del self.n_initial['Ls']
         self.n_initial["Lf"] = 1000
         self.record = ["Lf"]
-
         self.output = ["Lf"]
+
+
+class SelfSscPositiveFbLoop(SscPositiveFbLoop):
+    def __init__(self, arguments=None):
+        SscPositiveFbLoop.__init__(self, arguments=arguments)
+
+        del self.n_initial['Lf']
+        self.n_initial["Ls"] = 1000
+        self.record = ["Ls"]
+        self.output = ["Ls"]
 
 
 class TcrCycleSelfLigand(TcrCycleSelfWithForeign):
@@ -368,11 +463,7 @@ class TcrCycleSelfLigand(TcrCycleSelfWithForeign):
         del self.n_initial['Lf']
         self.n_initial["Ls"] = 1000
         self.record = ["Ls"]
-
         self.output = ["Ls"]
-
-    # def change_ligand_concentration(self, concentration):
-    #     self.n_initial["Ls"] = 384
 
 
 class KPRealistic(KPSingleSpecies):
@@ -380,9 +471,11 @@ class KPRealistic(KPSingleSpecies):
         KPSingleSpecies.__init__(self, self_foreign=self_foreign, arguments=arguments)
 
         if self.self_foreign_flag:
-            self.ligand = TcrCycleSelfWithForeign(arguments=arguments)
+            self.ligand = SscPositiveFbLoop(arguments=arguments)
+            # self.ligand = TcrCycleSelfWithForeign(arguments=arguments)
         else:
-            self.ligand = TcrCycleSelfLigand(arguments=arguments)
+            self.ligand = SelfSscPositiveFbLoop(arguments=arguments)
+            # self.ligand = TcrCycleSelfLigand(arguments=arguments)
 
         self.forward_rates = self.ligand.forward_rates
         self.forward_rxns = self.ligand.forward_rxns
@@ -393,7 +486,7 @@ class KPRealistic(KPSingleSpecies):
         self.record = self.ligand.record
 
         self.num_files = 1000
-        self.run_time = 1000
+        self.run_time = 1500
         self.simulation_time = self.set_simulation_time()
 
         self.file_list = []
@@ -510,7 +603,10 @@ if __name__ == "__main__":
         kp.ligand.add_step_7()
     if args.steps > 7:
         kp.ligand.add_step_8()
+        # kp.ligand.add_step_8()
     if args.steps > 8:
-        kp.ligand.add_nonspecific_positive_fb()
+        kp.ligand.add_step_9()
+        kp.ligand.add_step_10()
+        # kp.ligand.add_nonspecific_positive_fb()
 
     kp.main_script(run=args.run)
