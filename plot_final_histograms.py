@@ -11,14 +11,13 @@ if __name__ == "__main__":
                         help="number of KP steps.")
     parser.add_argument('--fb', dest='fb', action='store', type=float)
     parser.add_argument('--d', dest='d', action='store', type=str)
-    parser.add_argument('--xhi', dest='xhi', action='store', type=float, default=10.0)
-    parser.add_argument('--xlo', dest='xlo', action='store', type=float, default=0.0)
+    parser.add_argument('--xhi', dest='xhi', action='store', type=float)
+    parser.add_argument('--xlo', dest='xlo', action='store', type=float)
+    parser.add_argument('--lf', dest='lf', action='store', type=int, default=30)
 
     args = parser.parse_args()
     steps = args.steps
-    xlo = args.xlo
-    xhi = args.xhi
-    lf = 50
+    lf = args.lf
 
     # if steps > 8:
     #     if args.fb:
@@ -37,10 +36,11 @@ if __name__ == "__main__":
     ic_lf.plot_dn()
     plt.legend()
 
-    print("[L_f] = 30")
-    plt.xlim(xlo, xhi)
-    plt.ylim(0, 1)
+    print("[L_f] = {0}".format(lf))
 
-    plt.title("{0} Steps: IC = {1}".format(steps, ic_lf.calculate_ic()))
+    if args.xlo and args.xhi:
+        plt.xlim(args.xlo, args.xhi)
 
-    plt.savefig("histograms.pdf", format="pdf")
+    plt.title("{:.0f} Steps: C = {:.3f}, P_0_integral = {:.3f}".format(steps, ic_lf.calculate_ic(), ic_lf.p_0_integral))
+
+    plt.savefig("histograms_lf_{0}.pdf".format(lf), format="pdf")
