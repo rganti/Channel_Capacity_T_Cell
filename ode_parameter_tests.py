@@ -122,33 +122,33 @@ class ParameterTesting(object):
         pickle.dump(param_grid, pickle_out)
         pickle_out.close()
 
-    def run_tests(self):
-        paths = []
-        parameters = []
-
-        count = 0
-        home_directory = os.getcwd()
-
-        for set in list(self.grid):
-            file_path = "{0}_step_{1}".format(self.steps, count)
-            paths.append(file_path)
-            parameters.append(str(set))
-
-            make_and_cd(file_path)
-            self.make_launch_simulations(set)
-            os.chdir(home_directory)
-
-            count += 1
-
-        df = pd.DataFrame({'file_path': paths})
-        df.to_csv("./file_paths", sep='\t')
-
-        df_2 = pd.DataFrame({'file_path': paths, 'parameters': parameters})
-        df_2.to_csv("./parameters", sep='\t')
-
-        pickle_out = open("parameter_range.pickle", "wb")
-        pickle.dump(self.param_grid, pickle_out)
-        pickle_out.close()
+    # def run_tests(self):
+    #     paths = []
+    #     parameters = []
+    #
+    #     count = 0
+    #     home_directory = os.getcwd()
+    #
+    #     for set in list(self.grid):
+    #         file_path = "{0}_step_{1}".format(self.steps, count)
+    #         paths.append(file_path)
+    #         parameters.append(str(set))
+    #
+    #         make_and_cd(file_path)
+    #         self.make_launch_simulations(set)
+    #         os.chdir(home_directory)
+    #
+    #         count += 1
+    #
+    #     df = pd.DataFrame({'file_path': paths})
+    #     df.to_csv("./file_paths", sep='\t')
+    #
+    #     df_2 = pd.DataFrame({'file_path': paths, 'parameters': parameters})
+    #     df_2.to_csv("./parameters", sep='\t')
+    #
+    #     pickle_out = open("parameter_range.pickle", "wb")
+    #     pickle.dump(self.param_grid, pickle_out)
+    #     pickle_out.close()
 
 
 if __name__ == "__main__":
