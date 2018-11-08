@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import matplotlib.pyplot as plt
 
@@ -16,18 +17,8 @@ if __name__ == "__main__":
     parser.add_argument('--lf', dest='lf', action='store', type=int, default=30)
 
     args = parser.parse_args()
-    steps = args.steps
+    steps = [int(s) for s in os.path.basename(os.getcwd()) if s.isdigit()][0]
     lf = args.lf
-
-    # if steps > 8:
-    #     if args.fb:
-    #         file_path = "{0}_step_k_pos_{1}/".format(steps, args.fb)
-    #     else:
-    #         file_path = "{0}_step/".format(steps)
-    # if args.d:
-    #     file_path = args.d
-    # else:
-    #     file_path = "{0}_step/".format(steps)
 
     ic_lf = InformationCapacity(foreign_directory="Ls_Lf_{0}/".format(lf),
                                 self_directory="Ls/",
