@@ -14,7 +14,7 @@ class ParameterTesting(object):
     def __init__(self, steps=8):
         self.binding_constants = BindingParameters()
 
-        self.lf = 30
+        self.lf = 1
         self.sub_directories = ["Ls", "Ls_Lf_{0}".format(self.lf)]
         self.steps = steps
         #
@@ -85,6 +85,40 @@ class ParameterTesting(object):
         make_and_cd(file_path)
         self.make_launch_simulations(param_grid)
         os.chdir(self.home_directory)
+
+    def run_neg_fb_parameter_search(self):
+        count = 0
+
+        on_rates = [0.5, 1.0, 2.0, 3.0, 5.0]
+        negative_fb = [0.0, 0.001, 0.01, 0.05, 0.1]
+
+        param_grid = {}
+
+        for on_rate in on_rates:
+            param_grid['k_lck_on_RL'] = on_rate / self.binding_constants.initial.lck_0
+            param_grid['k_p_on_R_pmhc'] = on_rate
+            param_grid['k_zap_on_R_pmhc'] = on_rate / self.binding_constants.initial.zap_0
+            param_grid['k_p_on_zap_species'] = on_rate
+            param_grid['k_lat_on_species'] = on_rate / self.binding_constants.initial.lat_0
+            param_grid['kp_on_lat1'] = on_rate
+            param_grid['k_p_lat_on_species'] = on_rate / 10.0
+
+            for i in negative_fb:
+                param_grid['k_neg_fb'] = i
+                param_grid['k_lcki'] = 0.01
+                self.create_submit(count, param_grid)
+
+                count += 1
+
+        df = pd.DataFrame({'file_path': self.paths})
+        df.to_csv("./file_paths", sep='\t')
+
+        df_2 = pd.DataFrame({'file_path': self.paths, 'parameters': self.parameters})
+        df_2.to_csv("./parameters", sep='\t')
+
+        pickle_out = open("parameter_range.pickle", "wb")
+        pickle.dump(param_grid, pickle_out)
+        pickle_out.close()
 
     def run_parameter_search(self):
         count = 0
@@ -161,4 +195,4 @@ if __name__ == "__main__":
 
     p_test = ParameterTesting(steps=args.steps)
 
-    p_test.run_parameter_search()
+    p_test.run_neg_fb_parameter_search()
