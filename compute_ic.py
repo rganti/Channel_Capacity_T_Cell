@@ -44,10 +44,8 @@ class InformationCapacity(object):
         count, self_bins = np.histogram(self.self_output, bins=self.estimator, density=True)
         count, foreign_bins = np.histogram(self.foreign_output, bins=self.estimator, density=True)
 
-        # bins = np.arange(min(self_bins), max(foreign_bins), bin_width)
         bins = np.linspace(min(self_bins), max(foreign_bins), num=num_bins)
 
-        # print(str(bins))
         return bins
 
     # def kde_plot(self):
@@ -124,7 +122,7 @@ class InformationCapacity(object):
     #     return kl_cn_dn
 
     def calculate_ic(self):
-        number_of_bins = 200
+        number_of_bins = 100
 
         while self.p_0_integral < 0.99:
             bins = self.calculate_bins(num_bins=number_of_bins)
@@ -209,6 +207,7 @@ def check_binning():
 if __name__ == "__main__":
     ic = InformationCapacity()
     ic.calculate_ic()
+
     # ic.alternate_calculate_ic()
     # check_binning()
     # plt.savefig("output_histograms_test.pdf", format='pdf')
