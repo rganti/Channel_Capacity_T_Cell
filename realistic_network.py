@@ -16,28 +16,33 @@ class InitialConcentrations(object):
         self.zap_0 = 1200000
 
         self.lat_0 = 150000
-        self.sos_0 = 500
+        self.sos_0 = 1000
 
-        self.ras_gdp_0 = 300
+        self.ras_gdp_0 = 1000
         self.ras_gap_0 = 10
 
 
 class BindingParameters(object):
     def __init__(self):
+        # Initial Conditions
+        self.initial = InitialConcentrations()
+
         # Zeroth Cycle ligand binding
         self.k_L_on = 0.0022
         self.k_foreign_off = 0.2
-        self.k_self_off = 10.0 * self.k_foreign_off
+        self.k_self_off = 1.2  # 10.0 * self.k_foreign_off
 
         # First Cycle Lck binding
-        self.k_lck_on_R_pmhc = 0.001 / 5.0  # / 200 # self.k_foreign_off / 100.0
+        self.on_rate = 1.5
+
+        self.k_lck_on_R_pmhc = (self.on_rate / self.initial.lck_0)  # * 100.0
         self.k_lck_off_R_pmhc = self.k_foreign_off / 40.0
 
         self.k_lck_on_R = 1.0 / 100000.0
         self.k_lck_off_R = 20.0
 
         # Second Cycle Lck phosphorylation
-        self.k_p_on_R_pmhc = 2.0 / 5.0
+        self.k_p_on_R_pmhc = self.on_rate
         self.k_p_off_R_pmhc = self.k_foreign_off / 40.0  # self.k_foreign_off / 10.0
 
         self.k_lck_on_RP = 1.0 / 100000.0
@@ -47,7 +52,7 @@ class BindingParameters(object):
         self.k_p_off_R = 20.0
 
         # Third Cycle Zap binding
-        self.k_zap_on_R_pmhc = 0.001 / 5.0  # self.k_lck_on_R_pmhc # self.k_foreign_off / 100.0  # self.k_lck_on_R_pmhc
+        self.k_zap_on_R_pmhc = (self.on_rate / self.initial.zap_0)  #* 100.0
         self.k_zap_off_R_pmhc = self.k_lck_off_R_pmhc
 
         self.k_lck_on_zap_R = self.k_lck_on_RP
@@ -57,53 +62,60 @@ class BindingParameters(object):
         self.k_zap_off_R = 20.0
 
         # Fourth Cycle phosphorylate zap
-        self.k_p_on_zap_species = 2.0 / 10.0
+        self.k_p_on_zap_species = self.on_rate  # / 10.0
         self.k_p_off_zap_species = self.k_p_off_R_pmhc
 
         self.k_lck_on_zap_p = self.k_lck_on_RP
         self.k_lck_off_zap_p = self.k_lck_off_zap_R
 
         # Fifth Negative Feedback Loop
-        self.k_negative_loop = 20.0
+        self.k_negative_loop = 0.05  # 5.0
+        self.k_lcki = 0.01
 
         # Sixth LAT on
-        self.k_lat_on_species = 0.01
-        # self.k_lck_on_R_pmhc / 200 # self.k_lck_on_R_pmhc / 100.0  # self.k_foreign_off / 100.0
+        self.k_lat_on_species = self.on_rate / self.initial.lat_0
         self.k_lat_off_species = self.k_lck_off_R_pmhc
 
         self.k_lat_on_rp_zap = self.k_zap_on_R
         self.k_lat_off_rp_zap = 20.0
 
-        # Seventh LAT phosphorylation
-        self.k_p_lat_on_species = 0.1  # self.k_p_on_zap_species / 100
+        # Seventh first LAT phosphorylation
+        self.k_p_lat_1 = self.on_rate
+
+        # Eighth second LAT phosphorylation
+        self.k_p_lat_on_species = self.on_rate / 10.0  # / 10.0  # self.k_p_on_zap_species / 100
         self.k_p_lat_off_species = self.k_p_off_R_pmhc
 
+        self.k_p_on_lat = self.k_p_on_R
+        self.k_p_off_lat = 20.0
+
         # Eighth Sos on
-        self.k_sos_on = 0.0008
+        self.k_sos_on = 0.001
         self.k_sos_off = 0.005
 
+        self.multiplier = 10.0
         # Ninth Sos RasGDP and RasGTP
-        self.k_sos_on_rgdp = 0.0024
-        self.k_sos_off_rgdp = 3.0
+        self.k_sos_on_rgdp = 0.0024 * self.multiplier
+        self.k_sos_off_rgdp = 3.0 * self.multiplier
 
-        self.k_sos_on_rgtp = 0.0022
-        self.k_sos_off_rgtp = 0.4
+        self.k_sos_on_rgtp = 0.0022 * self.multiplier
+        self.k_sos_off_rgtp = 0.4 * self.multiplier
 
         # Tenth
         # sos_rgtp + rgdp
-        self.k_rgdp_on_sos_rgtp = 0.001
-        self.k_rgdp_off_sos_rgtp = 0.1
-        self.k_cat_3 = 0.038 * 2.5
+        self.k_rgdp_on_sos_rgtp = 0.001 * self.multiplier
+        self.k_rgdp_off_sos_rgtp = 0.1 * self.multiplier
+        self.k_cat_3 = 0.038 * 0.9 * self.multiplier
 
         # sos_rgdp + rgdp
-        self.k_rgdp_on_sos_rgdp = 0.0014
-        self.k_rgdp_off_sos_rgdp = 1.0
-        self.k_cat_4 = 0.003
+        self.k_rgdp_on_sos_rgdp = 0.0014 * self.multiplier
+        self.k_rgdp_off_sos_rgdp = 1.0 * self.multiplier
+        self.k_cat_4 = 0.003 * self.multiplier
 
         # rgap + rgtp -> rgdp
-        self.k_rgap_on_rgtp = 0.0348
-        self.k_rgap_off_rgtp = 0.2
-        self.k_cat_5 = 0.1
+        self.k_rgap_on_rgtp = 0.0348 * self.multiplier
+        self.k_rgap_off_rgtp = 0.2 * self.multiplier
+        self.k_cat_5 = 0.1 * self.multiplier
 
         # Eighth LAT -> final product
         self.k_product_on = 0.008
@@ -111,9 +123,6 @@ class BindingParameters(object):
 
         # Ninth: Positive Feedback Loop
         self.k_positive_loop = 0.0025
-
-        self.k_p_on_lat = self.k_p_on_R_pmhc / 10000.0
-        self.k_p_off_lat = 20.0
 
         # # Eighth Grb on
         # self.k_grb_on_species = self.k_lck_on_R_pmhc
@@ -177,7 +186,10 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
     def __init__(self, arguments=None):
         TcrSelfWithForeign.__init__(self, arguments=arguments)
 
-        self.n_initial = {"R": 10000, "Lck": 2000, "Zap": 2000, "LAT": 2000, "Lf": self.arguments.ls_lf, "Ls": 1000}
+        self.initial = InitialConcentrations()
+
+        self.n_initial = {"R": self.initial.r_0, "Lck": self.initial.lck_0, "Zap": self.initial.zap_0,
+                          "LAT": self.initial.lat_0, "Lf": self.arguments.ls_lf, "Ls": 1000}
         self.record = ["Lf", "Ls"]
         self.output = ["Lf", "Ls"]
 
@@ -343,6 +355,36 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
         return final_product
 
+    def cycle_7(self, i, count):
+        final_product = "RP{0}_Lck_Zap_P_LATP".format(i)
+
+        self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LAT"], [final_product],
+                                    self.rate_constants.k_p_lat_on_species, self.rate_constants.k_p_lat_off_species)
+
+        no_ligand = self.ligand_off(final_product, i)
+
+        if count == 0:
+            no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
+            no_zap_p = self.dephosphorylate_zap(no_lck)
+            no_latp = self.dephosphorylate_lat(no_zap_p)
+
+        return final_product
+
+    def cycle_8(self, i, count):
+        final_product = "RP{0}_Lck_Zap_P_LATPP".format(i)
+
+        self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP"], [final_product],
+                                    self.rate_constants.k_p_lat_on_species, self.rate_constants.k_p_lat_off_species)
+
+        no_ligand = self.ligand_off(final_product, i)
+
+        if count == 0:
+            no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
+            no_zap_p = self.dephosphorylate_zap(no_lck)
+            no_latp = self.dephosphorylate_lat(no_zap_p)
+
+        return final_product
+
     def add_step_7(self):
         self.increment_step()
         final_product = "LATP"
@@ -485,7 +527,7 @@ class KPRealistic(KPSingleSpecies):
 
         self.record = self.ligand.record
 
-        self.num_files = 1000
+        self.num_files = 500
         self.run_time = 1500
         self.simulation_time = self.set_simulation_time()
 
@@ -600,10 +642,11 @@ if __name__ == "__main__":
     if args.steps > 5:
         kp.ligand.add_cycle(kp.ligand.cycle_6)
     if args.steps > 6:
-        kp.ligand.add_step_7()
+        # kp.ligand.add_step_7()
+        kp.ligand.add_cycle(kp.ligand.cycle_7)
     if args.steps > 7:
-        kp.ligand.add_step_8()
         # kp.ligand.add_step_8()
+        kp.ligand.add_cycle(kp.ligand.cycle_8)
     if args.steps > 8:
         kp.ligand.add_step_9()
         kp.ligand.add_step_10()
