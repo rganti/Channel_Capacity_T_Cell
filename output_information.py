@@ -30,16 +30,18 @@ class OneDHistogramInformation(object):
 
 
 class HistogramInformation(object):
-    def __init__(self):
-        self.df = pd.read_csv("./file_paths", sep='\t', index_col=0)
+    def __init__(self, directory=".", lf=30):
+        self.df = pd.read_csv(directory + "/file_paths", sep='\t', index_col=0)
         self.ic = []
         self.kp_lat_2 = []
 
-        self.file_paths = self.df['file_path'][10:]
+        self.file_paths = [directory + "/" + path for path in self.df['file_path']]
+        self.lf = lf
 
-        self.lf = 30
+        self.x_array = np.array([1.0, 5.0, 10.0, 50.0, 100.0])
+        self.y_array = np.linspace(0.5, 5.0, 10)
 
-    def compute_variables(self):
+    def compute_variables(self, rate='kp_on_lat2'):
         k_on = []
         kp_2 = []
         count = 0
@@ -68,7 +70,7 @@ class HistogramInformation(object):
             # self.ls_iqr.append(ls_iqr)
 
             k_on.append(C)
-            kp_2.append(parameters['kp_on_lat2'])
+            kp_2.append(parameters[rate])
             count += 1
             if count == 5:
                 self.ic.append(k_on)
@@ -77,23 +79,23 @@ class HistogramInformation(object):
                 k_on = []
                 count = 0
 
-    def modify_df(self):
-        self.df['ls_mean'] = self.ls_mean
-        self.df['lf_mean'] = self.lf_mean
-
-        self.df['ls_iqr'] = self.ls_iqr
-        self.df['lf_iqr'] = self.lf_iqr
-
-        self.df['C'] = self.ic
-
-        self.df.to_csv("./output_info", sep='\t', float_format='%.3f')
+    # def modify_df(self):
+    #     self.df['ls_mean'] = self.ls_mean
+    #     self.df['lf_mean'] = self.lf_mean
+    #
+    #     self.df['ls_iqr'] = self.ls_iqr
+    #     self.df['lf_iqr'] = self.lf_iqr
+    #
+    #     self.df['C'] = self.ic
+    #
+    #     self.df.to_csv("./output_info", sep='\t', float_format='%.3f')
 
     def main(self):
         self.compute_variables()
 
         plt.imshow(np.array(self.ic), extent=[1.0, 100.0, 5.0, 0.5], aspect=2)
-        plt.xticks(np.array([1.0, 5.0, 10.0, 50.0, 100.0]))
-        plt.yticks(np.linspace(0.5, 5.0, 10))
+        plt.xticks(self.x_array)
+        plt.yticks(self.y_array)
 
         plt.ylabel("$k_{on}$")
         plt.xlabel("reduction")
@@ -101,8 +103,6 @@ class HistogramInformation(object):
         plt.colorbar(orientation='vertical')
 
         plt.savefig("capacity_on_rates.pdf", format="pdf")
-
-        # self.modify_df()
 
 
 if __name__ == "__main__":
