@@ -1,7 +1,6 @@
 #!/usr/bin/python
 import os
 
-# import matplotlib.pyplot as plt
 import numpy as np
 
 from post_process import load
@@ -26,6 +25,7 @@ class PlotOutputHist(object):
         output_array = []
         self_foreign = check_columns("sample_0/")
         count = 0
+        home = os.getcwd()
         for i in range(1000):
             try:
                 trajectory = np.loadtxt("sample_{0}/mean_traj".format(i))
@@ -48,6 +48,9 @@ class PlotOutputHist(object):
                     output_array.append(trajectory[-1, -1])
             except:
                 print("Error at sample_{0}".format(i))
+                # os.chdir("sample_{0}".format(i))
+                # os.system("python ~/SSC_python_modules/post_process.py --num_files 500 --run_time 1500 --time_step 1500")
+                # os.chdir(home)
                 count += 1
         print(str(count))
         np.savetxt("output", output_array, fmt='%f')
