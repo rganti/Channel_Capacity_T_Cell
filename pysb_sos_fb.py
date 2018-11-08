@@ -27,10 +27,12 @@ def add_observable(species):
 class SoSFeedback(object):
 
     def __init__(self):
-        self.run_time = 500000
+        self.run_time = 300
         self.tspan = np.linspace(0, self.run_time)
 
         self.sos = [round(i) for i in np.linspace(25, 500, num=40)]
+
+        self.model = Model()
 
     def define_monomers(self):
         Monomer('Sos')
@@ -130,7 +132,7 @@ class SoSFeedback(object):
              k_cat_5)
 
     def make_model(self):
-        Model()
+        # Model()
 
         self.define_monomers()
 
