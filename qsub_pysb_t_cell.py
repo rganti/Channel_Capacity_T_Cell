@@ -114,30 +114,33 @@ if __name__ == "__main__":
                         help="number of KP steps.")
     parser.add_argument('--lf', dest='lf', action='store', type=int, default=30,
                         help="number of foreign ligands.")
-    parser.add_argument('--ssa', dest='ssa', action='store_true', default=False,
-                        help="flag for submitting stochastic calculations.")
+    parser.add_argument('--early_pos', dest='early_pos', action='store_true', default=False,
+                        help="flag for early positive feedback loop.")
 
     args = parser.parse_args()
 
     binding_parameters = BindingParameters()
 
-    # if args.steps == 9:
-    #     make_and_cd("{0}_step".format(args.steps))
-    # else:
-    make_and_cd("{0}_step".format(args.steps))
+    make_and_cd("{0}_step".format(args.steps, binding_parameters.k_negative_loop))
 
     sub_directories = ["Ls", "Ls_Lf_{0}".format(args.lf)]
     home_directory = os.getcwd()
 
-    if args.ssa:
-        sub_directories = ["Ls"]
-
     for directory in sub_directories:
+        if directory in os.listdir("."):
+            continue
+
         make_and_cd(directory)
         if directory == "Ls_Lf_{0}".format(args.lf):
-            qsub = LaunchQsub(args.steps, lf=args.lf, self_foreign=True)
+            if args.early_pos:
+                qsub = LaunchQsub(args.steps, lf=args.lf, self_foreign=True, early_pos=True)
+            else:
+                qsub = LaunchQsub(args.steps, lf=args.lf, self_foreign=True)
         else:
-            qsub = LaunchQsub(args.steps)
+            if args.early_pos:
+                qsub = LaunchQsub(args.steps, early_pos=True)
+            else:
+                qsub = LaunchQsub(args.steps)
 
         qsub.generate_qsub()
         qsub.launch()
