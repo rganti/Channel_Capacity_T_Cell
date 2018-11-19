@@ -7,7 +7,8 @@ import subprocess
 import numpy as np
 import pandas as pd
 
-from realistic_network import make_and_cd, BindingParameters
+from realistic_network import make_and_cd
+from simulation_parameters import BindingParameters
 
 
 class ParameterTesting(object):
