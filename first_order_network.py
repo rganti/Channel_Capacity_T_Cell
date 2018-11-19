@@ -1,4 +1,5 @@
-from realistic_network import BindingParameters, TcrSelfWithForeign, TcrCycleSelfWithForeign
+from realistic_network import TcrSelfWithForeign, TcrCycleSelfWithForeign
+from simulation_parameters import BindingParameters
 
 
 class BindingParametersFirstOrder(BindingParameters):
