@@ -6,17 +6,14 @@ import subprocess
 
 import numpy as np
 
+from simulation_parameters import DefineRegion
+
 
 class SharedCommands(object):
 
-    def __init__(self, n_initial, record, script_name):
+    def __init__(self, n_initial, record):
         self.n_initial = n_initial
         self.record = record
-        self.script_name = script_name
-
-    def define_region(self, f):
-        f.write('region World box width 1 height 1 depth 1\n')
-        f.write('subvolume edge 1\n\n')
 
     def initialize(self, f):
         for key, value in self.n_initial.items():
@@ -40,7 +37,9 @@ class TwoSpecies(object):
         self.n_initial = {"A": 800, "B": 200}
         self.record = ["A", "B"]
         self.script_name = "two_species_A_B.rxn"
-        self.shared = SharedCommands(self.n_initial, self.record, self.script_name)
+        self.shared = SharedCommands(self.n_initial, self.record)
+
+        self.regions = DefineRegion()
 
         self.simulation_name = "two_species_A_B"
         self.num_files = 50
@@ -54,7 +53,7 @@ class TwoSpecies(object):
     def generate_script(self):
         f = open(self.script_name, "w")
 
-        self.shared.define_region(f)
+        self.regions.define_region(f)
         self.define_rxns(f)
         self.shared.initialize(f)
         self.shared.record_species(f)
@@ -275,6 +274,8 @@ class KPSingleSpecies(object):
         self.self_foreign_flag = self_foreign
         self.arguments = arguments
 
+        self.regions = DefineRegion()
+
         if self.foreign_flag:
             self.ligand = ForeignLigand()
         elif self.self_foreign_flag:
@@ -296,6 +297,7 @@ class KPSingleSpecies(object):
         self.reverse_rxns = self.ligand.reverse_rxns
 
         self.record = self.ligand.record
+
 
     def set_time_step(self):
         if self.arguments:
@@ -334,12 +336,12 @@ class KPSingleSpecies(object):
 
     def generate_ssc_script(self, simulation_name):
         script_name = simulation_name + ".rxn"
-        shared = SharedCommands(self.ligand.n_initial, self.record, script_name)
+        shared = SharedCommands(self.ligand.n_initial, self.record)
 
         f = open(script_name, "w")
         n = open("ordered_network", "w")
 
-        shared.define_region(f)
+        self.regions.define_region(f)
         f.write("-- Forward reactions \n")
         n.write("# Forward Reactions \n")
         self.define_reactions(f, self.forward_rxns, self.forward_rates, n)
