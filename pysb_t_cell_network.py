@@ -5,9 +5,8 @@ import pickle
 import numpy as np
 from pysb import *
 from pysb.integrate import odesolve
-from pysb.simulator.bng import BngSimulator
 
-from realistic_network import BindingParameters, InitialConcentrations
+from simulation_parameters import InitialConcentrations, BindingParameters
 
 
 def e(i, s=""):
@@ -115,6 +114,13 @@ class PysbTcrSelfWithForeign(object):
             Parameter('Lf_0', self.lf)
             Initial(Lf(), Lf_0)
 
+    def add_new_monomer(self, product):
+        try:
+            self.model.monomers[product]
+        except:
+            Monomer(product)
+            Initial(eval(product + "()"), Parameter(product + "_0", 0))
+
     def define_rates(self):
         Parameter('k_L_on', self.rate_constants.k_L_on)
         if "Lf" in self.output:
@@ -123,7 +129,7 @@ class PysbTcrSelfWithForeign(object):
 
     def add_step_0(self, i):
         product = "R{0}".format(i)
-        add_new_monomer(product)
+        self.add_new_monomer(product)
 
         Rule('{0}_bind'.format(product), R() + eval('{0}()'.format(i)) | eval('{0}()'.format(product)),
              k_L_on, eval('k_{0}_off'.format(i)))
@@ -134,14 +140,14 @@ class PysbTcrSelfWithForeign(object):
 
     def zap_off(self, product):
         new = product.replace("_Zap", "")
-        add_new_monomer(new)
+        self.add_new_monomer(new)
         Rule('{0}_unbindZap'.format(product), eval('{0}()'.format(product)) | eval('{0}()'.format(new)) + Zap(),
              k_zap_off_R, k_zap_on_R)
         return new
 
     def lck_off(self, no_ligand_product, k_off="k_lck_off_R"):
         new = no_ligand_product.replace("_Lck", "")
-        add_new_monomer(new)
+        self.add_new_monomer(new)
         Rule('{0}_unbindLck'.format(no_ligand_product),
              eval('{0}()'.format(no_ligand_product)) | eval('{0}()'.format(new)) + Lck(),
              eval(k_off), k_lck_on_R)
@@ -150,7 +156,7 @@ class PysbTcrSelfWithForeign(object):
 
     def unbind_ligand(self, i, final_product):
         new = final_product.replace(i, "")
-        add_new_monomer(new)
+        self.add_new_monomer(new)
         Rule('{0}_unbindL'.format(final_product),
              eval('{0}()'.format(final_product)) | eval('{0}()'.format(i)) + eval('{0}()'.format(new)),
              eval('k_{0}_off'.format(i)), k_L_on)
@@ -596,18 +602,18 @@ class PysbTcrSelfWithForeign(object):
         observables = self.make_model()
 
         write_columns(observables)
-        write_model_attributes(model.rules, "rules")
-        write_model_attributes(model.parameters, "parameters")
-        write_model_attributes(model.observables, "observables")
+        write_model_attributes(self.model.rules, "rules")
+        write_model_attributes(self.model.parameters, "parameters")
+        write_model_attributes(self.model.observables, "observables")
 
         np.savetxt("time", self.tspan, fmt='%f')
         time_index = 2
 
         for ligand in self.p_ligand:
-            model.parameters['Ls_0'].value = ligand
+            self.model.parameters['Ls_0'].value = ligand
             ligand_array.append(ligand)
 
-            y = odesolve(model, self.tspan, compiler="python")
+            y = odesolve(self.model, self.tspan, compiler="python")
 
             if len(observables) > 1:
                 output_array = y[observables[0]] + y[observables[1]]
@@ -714,283 +720,6 @@ class LatPhosphorylationExtension(PysbTcrSelfWithForeign):
         return observables
 
 
-class EarlyPositiveFeedback(PysbTcrSelfWithForeign):
-    def __init__(self, steps=8, self_foreign=False, lf=30):
-        PysbTcrSelfWithForeign.__init__(self, steps=steps, self_foreign=self_foreign, lf=lf)
-
-    def cycle_4(self, i):
-
-        if i == "Ls":
-            Parameter('k_p_on_zap_species', self.rate_constants.k_p_on_zap_species)
-            Parameter('k_p_off_zap_species', self.rate_constants.k_p_off_zap_species)
-
-        previous_product = self.cycle_3(i)
-        product = "RP{0}_Lck_Zap_P".format(i)
-        add_new_monomer(product)
-
-        Rule('{0}_cat'.format(product), eval('{0}()'.format(previous_product)) | eval('{0}()'.format(product)),
-             k_p_on_zap_species, k_p_off_zap_species)
-        add_observable(product)
-
-        no_ligand = self.unbind_ligand(i, product)
-
-        if i == "Ls":
-            no_lck = self.lck_off(no_ligand, k_off="k_lck_off_zap_R")
-            self.dephosphorylate_zap(no_lck)
-
-        return product
-
-    def add_step_8_sos(self, i):
-
-        if i == "Ls":
-            model.parameters['Sos_0'].value = 2000
-            Parameter('k_sos_on', 0.0002 / 4)
-            Parameter('k_sos_off', 0.005)
-
-        previous_product = self.cycle_4(i)
-        product = previous_product + "_Sos"
-        add_new_monomer(product)
-
-        Rule("{0}_bind".format(product),
-             eval('{0}()'.format(previous_product)) + Sos() | eval('{0}()'.format(product)),
-             k_sos_on, k_sos_off)
-        add_observable(product)
-
-        return product
-
-    def add_step_9(self, i):
-        previous_product = self.add_step_8_sos(i)
-        product_rd = previous_product + "_Ras_GDP"
-
-        if i == "Ls":
-            Parameter('k_sos_on_rgdp', 0.0024)
-            Parameter('k_sos_off_rgdp', 3.0)
-
-        add_new_monomer(product_rd)
-
-        Rule('{0}_bind'.format(product_rd),
-             eval('{0}()'.format(previous_product)) + Ras_GDP() | eval('{0}()'.format(product_rd)),
-             k_sos_on_rgdp, k_sos_off_rgdp)
-
-        product_rt = previous_product + "_Ras_GTP"
-
-        if i == "Ls":
-            Parameter('k_sos_on_rgtp', 0.0022)
-            Parameter('k_sos_off_rgtp', 0.4)
-
-        add_new_monomer(product_rt)
-
-        Rule('{0}_bind'.format(product_rt),
-             eval('{0}()'.format(previous_product)) + Ras_GTP() | eval('{0}()'.format(product_rt)),
-             k_sos_on_rgtp, k_sos_off_rgtp)
-
-        return product_rd, product_rt
-
-    def add_step_10(self, i):
-        previous_product_rd, previous_product_rt = self.add_step_9(i)
-        product_rt_rd = previous_product_rt + "_Ras_GDP"
-
-        if i == "Ls":
-            Parameter('k_rgdp_on_sos_rgtp', 0.001)
-            Parameter('k_rgdp_off_sos_rgtp', 0.1)
-            Parameter('k_cat_3', 0.038 * 1.7)
-
-        add_new_monomer(product_rt_rd)
-
-        Rule('{0}_bind'.format(product_rt_rd),
-             eval('{0}()'.format(previous_product_rt)) + Ras_GDP() | eval('{0}()'.format(product_rt_rd)),
-             k_rgdp_on_sos_rgtp, k_rgdp_off_sos_rgtp)
-
-        Rule('{0}_cat'.format(product_rt_rd),
-             eval('{0}()'.format(product_rt_rd)) >> eval('{0}()'.format(previous_product_rt)) + Ras_GTP(),
-             k_cat_3)
-
-        product_rd_rd = previous_product_rd + "_Ras_GDP"
-
-        if i == "Ls":
-            Parameter('k_rgdp_on_sos_rgdp', 0.0014)
-            Parameter('k_rgdp_off_sos_rgdp', 1.0)
-            Parameter('k_cat_4', 0.003)
-
-        add_new_monomer(product_rd_rd)
-
-        Rule('{0}_bind'.format(product_rd_rd),
-             eval('{0}()'.format(previous_product_rd)) + Ras_GDP() | eval('{0}()'.format(product_rd_rd)),
-             k_rgdp_on_sos_rgdp, k_rgdp_off_sos_rgdp)
-
-        Rule('{0}_cat'.format(product_rd_rd),
-             eval('{0}()'.format(product_rd_rd)) >> eval('{0}()'.format(previous_product_rd)) + Ras_GTP(),
-             k_cat_4)
-
-        # Deactivate - convert Ras_GTP to Ras_GDP
-
-        product = "Ras_GAP_Ras_GTP"
-        new_product = "Ras_GTP"
-
-        if i == "Ls":
-            Parameter('k_rgap_on_rgtp', 0.0348)
-            Parameter('k_rgap_off_rgtp', 0.2)
-            Parameter('k_cat_5', 0.1)
-
-            add_new_monomer(product)
-
-            Rule('{0}_bind'.format(product),
-                 Ras_GAP() + Ras_GTP() | eval('{0}()'.format(product)),
-                 k_rgap_on_rgtp, k_rgap_off_rgtp)
-
-            add_observable(product)
-
-            Rule('{0}_cat'.format(product),
-                 eval('{0}()'.format(product)) >> Ras_GAP() + Ras_GDP(),
-                 k_cat_5)
-
-            add_observable(new_product)
-
-        return new_product
-
-    def make_model(self):
-        # Model()
-
-        self.define_monomers()
-        self.define_rates()
-
-        observables = []
-        for i in self.output:
-            if self.steps == 0:
-                product = self.add_step_0(i)
-            elif self.steps == 1:
-                product = self.cycle_1(i)
-            elif self.steps == 2:
-                product = self.cycle_2(i)
-            elif self.steps == 3:
-                product = self.cycle_3(i)
-            elif self.steps == 4:
-                product = self.cycle_4(i)
-            elif self.steps == 8:
-                product = self.add_step_8_sos(i)
-            else:
-                product = self.add_step_10(i)
-
-            if "O_{0}".format(product) not in observables:
-                observables.append("O_{0}".format(product))
-
-        return observables
-
-
-class PysbStochasticSimulations(PysbTcrSelfWithForeign):
-    def __init__(self, ls, steps=8, self_foreign=False, lf=30):
-        PysbTcrSelfWithForeign.__init__(self, steps=steps, self_foreign=self_foreign, lf=lf)
-        self.run_time = 1000
-        self.tspan = np.linspace(0, self.run_time)
-        self.ls = ls
-        self.runs = 2
-
-    def main(self):
-        observables = self.make_model()
-        write_columns(observables)
-        write_model_attributes(model.rules, "rules")
-        write_model_attributes(model.parameters, "parameters")
-        write_model_attributes(model.observables, "observables")
-        np.savetxt("time", self.tspan, fmt='%f')
-
-        model.parameters['Ls_0'].value = self.ls
-        sim = BngSimulator(model, tspan=self.tspan, cleanup=False)
-        simulation_results = sim.run(n_runs=self.runs, method='ssa', cleanup=False,
-                                     output_dir=os.getcwd())
-
-        # sim = StochKitSimulator(model, tspan=self.tspan)
-        # simulation_results = sim.run(n_runs=self.runs)
-
-        if len(observables) > 1:
-
-            ls_results = []
-            lf_results = []
-            for i in range(self.runs):
-                ls_results.append(simulation_results.observables[i][observables[0]])
-                lf_results.append(simulation_results.observables[i][observables[1]])
-
-            output = np.mean(ls_results, axis=0) + np.mean(lf_results, axis=0)
-        else:
-            results = []
-            for i in range(self.runs):
-                results.append(simulation_results.observables[i][observables[0]])
-            output = np.mean(results, axis=0)
-            print(results)
-            print(output)
-
-        np.savetxt("output", [output[-1]], fmt='%f')
-
-
-class PysbTcrCubicFbLoop(PysbTcrSelfWithForeign):
-    def __init__(self, steps=8, self_foreign=False, lf=30):
-        PysbTcrSelfWithForeign.__init__(self, steps=steps, self_foreign=self_foreign, lf=lf)
-
-    def non_specific_step_8(self, i):
-
-        if i == "Ls":
-            if self.p_flag:
-                Parameter('k_grb_on', self.parameters['k_8_1'])
-                Parameter('k_grb_product', self.parameters['k_8_2'])
-            else:
-                Parameter('k_grb_on', 0.00005)
-                Parameter('k_grb_product', 0.01)
-
-        previous_product = self.step_8(i)
-        intermediate_product = "LATP_Grb"
-        product = "final_product"
-
-        if i == "Ls":
-            add_new_monomer(intermediate_product)
-            Rule("{0}_convert".format(intermediate_product),
-                 eval('{0}()'.format(previous_product)) + Grb() | eval('{0}()'.format(intermediate_product)),
-                 k_grb_on, k_p_off_R_pmhc)
-
-            add_new_monomer(product)
-            Rule("{0}_cat".format(product),
-                 eval('{0}()'.format(intermediate_product)) >> LATP() + eval('{0}()'.format(product)),
-                 k_grb_product)
-            Rule("{0}_uncat".format(product), eval('{0}()'.format(product)) >> Grb(), k_p_off_R_pmhc)
-
-            add_observable(product)
-
-        return product
-
-    def add_positive_feedback_nonspecific(self, i):
-
-        if i == "Ls":
-            if self.p_flag:
-                Parameter('k_latp_product', self.parameters['k_9_1'])
-                Parameter('k_latp_product_grb', self.parameters['k_9_2'])
-                Parameter('k_positive_fb', self.parameters['k_9_3'])
-            else:
-                Parameter('k_latp_product', 0.0003)
-                Parameter('k_latp_product_grb', 0.0004)
-                Parameter('k_positive_fb', 5.0)
-
-        previous_product = self.non_specific_step_8(i)
-        intermediate_product = "LATP_" + previous_product
-        intermediate_product_2 = "LATP_" + previous_product + "_Grb"
-
-        if i == "Ls":
-            add_new_monomer(intermediate_product)
-            Rule("{0}_bind".format(intermediate_product),
-                 LATP() + eval('{0}()'.format(previous_product)) | eval('{0}()'.format(intermediate_product)),
-                 k_latp_product, k_p_off_R_pmhc)
-
-            # self.add_observable(intermediate_product)
-            add_new_monomer(intermediate_product_2)
-            Rule("{0}_bind".format(intermediate_product_2),
-                 eval('{0}()'.format(intermediate_product)) + Grb() | eval('{0}()'.format(intermediate_product_2)),
-                 k_latp_product_grb, k_p_off_R_pmhc)
-
-            Rule("{0}_cat".format(intermediate_product_2),
-                 eval('{0}()'.format(intermediate_product_2)) >> eval('{0}()'.format(intermediate_product)) + eval(
-                     '{0}()'.format(previous_product)),
-                 k_positive_fb)
-
-        return previous_product
-
-
 class PysbTcrLckFeedbackLoop(PysbTcrSelfWithForeign):
     def __init__(self):
         PysbTcrSelfWithForeign.__init__(self)
@@ -1062,7 +791,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Submitting ode calculations as function of steps",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--steps', dest='steps', action='store', type=int, default=8, help="number of KP steps.")
-    # parser.add_argument('--ls_lf', action='store_true', default=False, help="flag for submitting Ls_Lf calculations.")
     parser.add_argument('--lf', dest='lf', action='store', type=int, help="Number of foreign ligands.")
     parser.add_argument('--ssa', dest='ssa', action='store', type=int,
                         help="Run SSA simulations. Specify amount of Ls.")
@@ -1072,24 +800,24 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.lf:
-        if args.early_pos_fb:
-            tcr = EarlyPositiveFeedback(steps=args.steps, self_foreign=True, lf=args.lf)
-
-        elif args.ssa:
-            tcr = PysbStochasticSimulations(args.ssa, steps=args.steps, self_foreign=True, lf=args.lf)
-
-        else:
-            tcr = PysbTcrSelfWithForeign(steps=args.steps, self_foreign=True, lf=args.lf)
+        # if args.early_pos_fb:
+        #     tcr = EarlyPositiveFeedback(steps=args.steps, self_foreign=True, lf=args.lf)
+        #
+        # elif args.ssa:
+        #     tcr = PysbStochasticSimulations(args.ssa, steps=args.steps, self_foreign=True, lf=args.lf)
+        #
+        # else:
+        tcr = PysbTcrSelfWithForeign(steps=args.steps, self_foreign=True, lf=args.lf)
 
     else:
-        if args.early_pos_fb:
-            tcr = EarlyPositiveFeedback(steps=args.steps)
-
-        elif args.ssa:
-            tcr = PysbStochasticSimulations(args.ssa, steps=args.steps)
-
-        else:
-            tcr = PysbTcrSelfWithForeign(steps=args.steps)
+        # if args.early_pos_fb:
+        #     tcr = EarlyPositiveFeedback(steps=args.steps)
+        #
+        # elif args.ssa:
+        #     tcr = PysbStochasticSimulations(args.ssa, steps=args.steps)
+        #
+        # else:
+        tcr = PysbTcrSelfWithForeign(steps=args.steps)
 
     tcr.main()
 
