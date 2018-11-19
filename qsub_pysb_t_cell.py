@@ -5,7 +5,8 @@ import subprocess
 
 import numpy as np
 
-from realistic_network import make_and_cd, BindingParameters
+from realistic_network import make_and_cd
+from simulation_parameters import BindingParameters
 
 
 class LaunchQsub(object):
