@@ -1,6 +1,6 @@
 from pysb import *
 
-from realistic_network import BindingParameters
+from simulation_parameters import BindingParameters
 
 rate_constants = BindingParameters()
 
