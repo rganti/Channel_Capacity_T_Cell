@@ -290,14 +290,6 @@ class KPSingleSpecies(object):
         self.home_directory = os.getcwd()
 
         self.num_kp_steps = 1
-        self.forward_rates = self.ligand.forward_rates
-        self.forward_rxns = self.ligand.forward_rxns
-
-        self.reverse_rates = self.ligand.reverse_rates
-        self.reverse_rxns = self.ligand.reverse_rxns
-
-        self.record = self.ligand.record
-
 
     def set_time_step(self):
         if self.arguments:
@@ -336,7 +328,7 @@ class KPSingleSpecies(object):
 
     def generate_ssc_script(self, simulation_name):
         script_name = simulation_name + ".rxn"
-        shared = SharedCommands(self.ligand.n_initial, self.record)
+        shared = SharedCommands(self.ligand.n_initial, self.ligand.record)
 
         f = open(script_name, "w")
         n = open("ordered_network", "w")
@@ -344,11 +336,11 @@ class KPSingleSpecies(object):
         self.regions.define_region(f)
         f.write("-- Forward reactions \n")
         n.write("# Forward Reactions \n")
-        self.define_reactions(f, self.forward_rxns, self.forward_rates, n)
+        self.define_reactions(f, self.ligand.forward_rxns, self.ligand.forward_rates, n)
 
         n.write("\n# Reverse Reactions \n")
         f.write("\n-- Reverse reactions \n")
-        self.define_reactions(f, self.reverse_rxns, self.reverse_rates, n)
+        self.define_reactions(f, self.ligand.reverse_rxns, self.ligand.reverse_rates, n)
         f.write("\n")
         shared.initialize(f)
         f.write("\n")
@@ -378,7 +370,7 @@ class KPSingleSpecies(object):
             q.write("\t ./$EXE_FILE -e $RUN_TIME -t $STEP > traj_$j\n")
         q.write("done\n\n")
         q.write("python ~/SSC_python_modules/post_process.py --num_files {0} "
-                "--run_time {1} --time_step {2}\n".format(self.num_files, self.run_time, time_step))
+                "--run_time $RUN_TIME --time_step $STEP\n".format(self.num_files))
         if self.arguments.ss:
             q.write("python ~/SSC_python_modules/plot.py \n")
         q.close()
@@ -393,31 +385,35 @@ class KPSingleSpecies(object):
         self.ligand.simulation_name = "kp_steps_" + str(self.num_kp_steps)
         print("Num KP steps = " + str(self.num_kp_steps))
 
-        self.forward_rates[self.ligand.symbol + "{0}".format(self.num_kp_steps - 2)] = self.ligand.rate_constants.k_p
-        self.forward_rxns.append([[self.ligand.symbol + "{0}".format(self.num_kp_steps - 2)],
+        self.ligand.forward_rates[
+            self.ligand.symbol + "{0}".format(self.num_kp_steps - 2)] = self.ligand.rate_constants.k_p
+        self.ligand.forward_rxns.append([[self.ligand.symbol + "{0}".format(self.num_kp_steps - 2)],
                                   [self.ligand.symbol + "{0}".format(self.num_kp_steps - 1)]])
 
-        self.reverse_rates[self.ligand.symbol + "{0}".format(self.num_kp_steps - 1)] = self.reverse_rates[
+        self.ligand.reverse_rates[self.ligand.symbol + "{0}".format(self.num_kp_steps - 1)] = self.ligand.reverse_rates[
             self.ligand.symbol + "0"]
-        self.reverse_rxns.append([[self.ligand.symbol + "{0}".format(self.num_kp_steps - 1)], self.ligand.inputs])
+        self.ligand.reverse_rxns.append(
+            [[self.ligand.symbol + "{0}".format(self.num_kp_steps - 1)], self.ligand.inputs])
 
-        self.record.append(self.ligand.symbol + "{0}".format(self.num_kp_steps - 1))
+        self.ligand.record.append(self.ligand.symbol + "{0}".format(self.num_kp_steps - 1))
 
     def competing_add_step(self):
         self.num_kp_steps += 1
         self.ligand.simulation_name = "kp_steps_" + str(self.num_kp_steps)
         print("Num KP steps = " + str(self.num_kp_steps))
         for i in ["C", "D"]:
-            self.forward_rates[i + "{0}".format(self.num_kp_steps - 2)] = self.ligand.rate_constants.k_p
-            self.forward_rxns.append([[i + "{0}".format(self.num_kp_steps - 2)],
+            self.ligand.forward_rates[i + "{0}".format(self.num_kp_steps - 2)] = self.ligand.rate_constants.k_p
+            self.ligand.forward_rxns.append([[i + "{0}".format(self.num_kp_steps - 2)],
                                       [i + "{0}".format(self.num_kp_steps - 1)]])
             if i == "C":
-                self.reverse_rates[i + "{0}".format(self.num_kp_steps - 1)] = self.ligand.rate_constants.k_foreign_off
-                self.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Lf"]])
+                self.ligand.reverse_rates[
+                    i + "{0}".format(self.num_kp_steps - 1)] = self.ligand.rate_constants.k_foreign_off
+                self.ligand.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Lf"]])
             elif i == "D":
-                self.reverse_rates[i + "{0}".format(self.num_kp_steps - 1)] = self.ligand.rate_constants.k_self_off
-                self.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Ls"]])
-            self.record.append(i + "{0}".format(self.num_kp_steps - 1))
+                self.ligand.reverse_rates[
+                    i + "{0}".format(self.num_kp_steps - 1)] = self.ligand.rate_constants.k_self_off
+                self.ligand.reverse_rxns.append([[i + "{0}".format(self.num_kp_steps - 1)], ["R", "Ls"]])
+            self.ligand.record.append(i + "{0}".format(self.num_kp_steps - 1))
 
     def add_step(self):
         if self.self_foreign_flag:
