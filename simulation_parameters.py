@@ -1,10 +1,11 @@
 class DefineRegion(object):
     def __init__(self):
-        self.x = self.y = 10
+        self.x = self.y = 20.0
         self.depth = 1.0
-        self.cytosol_depth = 15.0
-        self.num_chambers = (self.x / self.depth) * (self.y / self.depth)
-
+        self.subvolume_edge = 1.0
+        self.cytosol_depth = 10.0
+        self.num_chambers = (self.x / self.subvolume_edge) * (self.y / self.subvolume_edge) * (
+                    self.depth / self.subvolume_edge)
         self.num_cytosol_chambers = self.num_chambers * self.cytosol_depth
 
     def define_region(self, f):
@@ -16,14 +17,14 @@ class DefineRegion(object):
         f.write('region Cytosol \n ')
         f.write('\t move 0 0 -{0} \n'.format(self.cytosol_depth / 2.0))
         f.write('\t\t box width {0} height {1} depth {2}\n\n'.format(self.x, self.y, self.cytosol_depth))
-        f.write('subvolume edge {0}\n\n'.format(self.depth))
+        f.write('subvolume edge {0}\n\n'.format(self.subvolume_edge))
 
 
 class InitialConcentrations(object):
     def __init__(self):
-        self.r_0 = 300  # 00
-        self.lck_0 = 300  # 00
-        self.zap_0 = 12000  # 00
+        self.r_0 = 305  # 00
+        self.lck_0 = 305  # 00
+        self.zap_0 = 80000  # 00
 
         self.lat_0 = 150000
         self.sos_0 = 1000
@@ -43,7 +44,7 @@ class BindingParameters(object):
         self.k_self_off = 2.0  # 10.0 * self.k_foreign_off
 
         # First Cycle Lck binding
-        self.on_rate = 1.0
+        self.on_rate = 2.0
 
         self.k_lck_on_R_pmhc = (self.on_rate / self.initial.lck_0)  # * 100.0
         self.k_lck_off_R_pmhc = self.k_foreign_off / 40.0
@@ -150,9 +151,10 @@ class BindingParameters(object):
 class MembraneInitialConcentrations(InitialConcentrations):
     def __init__(self):
         InitialConcentrations.__init__(self)
-        self.r_0 = 300  # 75
-        self.lck_0 = 300  # 2705
-        self.zap_0 = 12000  # 12180
+
+        # self.r_0 = 300  # 75
+        # self.lck_0 = 300  # 2705
+        # self.zap_0 = 12000  # 12180
         self.lat_0 = 1522
 
 
@@ -161,6 +163,8 @@ class DiffusionRates(object):
         self.region = DefineRegion()
         self.d_r = self.d_l = self.d_rl = 0.13 * self.region.num_chambers
         self.d_lck = 0.085 * self.region.num_chambers
+
+        self.d_zap = 10.0
 
 
 class MembraneBindingParameters(object):
