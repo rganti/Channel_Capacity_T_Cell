@@ -35,8 +35,8 @@ class MembraneTcrSelfWithForeign(TcrCycleSelfWithForeign):
             self.n_initial["LAT"] = self.initial.lat_0
 
         self.diffusion_flag = True
-        self.num_samples = 3
-        self.p_ligand = [50, 100, 150]
+        # self.num_samples = 1
+        # self.p_ligand = [150]
 
 
 class MembraneTcrSelfLigand(MembraneTcrSelfWithForeign):
@@ -58,15 +58,14 @@ class KpMembraneSpecies(KPRealistic):
         else:
             self.ligand = MembraneTcrSelfLigand(arguments=arguments)
 
-        self.run_time = 500
+        self.run_time = 50
 
-        self.forward_rates = self.ligand.forward_rates
-        self.forward_rxns = self.ligand.forward_rxns
+        self.simulation_time = 180  # self.set_simulation_time()
 
-        self.reverse_rates = self.ligand.reverse_rates
-        self.reverse_rxns = self.ligand.reverse_rxns
+    def set_simulation_time(self):
+        simulation_time = self.run_time * (20.0 / 1000)
 
-        self.record = self.ligand.record
+        return simulation_time
 
     def define_diffusion(self, f):
 
@@ -74,10 +73,14 @@ class KpMembraneSpecies(KPRealistic):
             if self.ligand.diffusion_loc_dict[key] == "Plasma":
                 f.write("diffusion {0} at {1} in {2}\n".format(key, self.ligand.diffusion_rate_dict[key],
                                                                self.ligand.diffusion_loc_dict[key]))
+            else:
+                f.write(
+                    "diffusion {0} at {1} in {2}, Cytosol<->Plasma\n".format(key, self.ligand.diffusion_rate_dict[key],
+                                                                             self.ligand.diffusion_loc_dict[key]))
 
     def generate_ssc_script(self, simulation_name):
         script_name = simulation_name + ".rxn"
-        shared = MembraneSharedCommands(self.ligand.n_initial, self.record, self.ligand.diffusion_loc_dict)
+        shared = MembraneSharedCommands(self.ligand.n_initial, self.ligand.record, self.ligand.diffusion_loc_dict)
 
         f = open(script_name, "w")
         n = open("ordered_network", "w")
@@ -85,11 +88,11 @@ class KpMembraneSpecies(KPRealistic):
         self.regions.define_membrane_region(f)
         f.write("-- Forward reactions \n")
         n.write("# Forward Reactions \n")
-        self.define_reactions(f, self.forward_rxns, self.forward_rates, n)
+        self.define_reactions(f, self.ligand.forward_rxns, self.ligand.forward_rates, n)
 
         n.write("\n# Reverse Reactions \n")
         f.write("\n-- Reverse reactions \n")
-        self.define_reactions(f, self.reverse_rxns, self.reverse_rates, n)
+        self.define_reactions(f, self.ligand.reverse_rxns, self.ligand.reverse_rates, n)
         f.write("\n")
 
         f.write("\n-- Diffusion \n")
@@ -102,6 +105,78 @@ class KpMembraneSpecies(KPRealistic):
 
         n.close()
         f.close()
+
+
+class Run(object):
+
+    def __init__(self, sub_directory):
+        # self.sub_directories = ["Ls_Lf_{0}".format(args.ls_lf)]
+        self.sub_directory = sub_directory
+        self.zap_diffusion = [20, 50, 100, 200]
+
+    def add_steps(self, kp):
+        kp.ligand.add_step_0()
+
+        if args.steps > 0:
+            kp.ligand.add_cycle(kp.ligand.cycle_1)
+        if args.steps > 1:
+            kp.ligand.add_cycle(kp.ligand.cycle_2)
+        if args.steps > 2:
+            kp.ligand.add_cycle(kp.ligand.cycle_3)
+
+    # def make_reactions(self):
+    #     home_directory = os.getcwd()
+    #     for sub_directory in self.sub_directories:
+    #
+    #         kp = self.create_classes(sub_directory)
+    #
+    #         kp.ligand.add_step_0()
+    #
+    #         if args.steps > 0:
+    #             kp.ligand.add_cycle(kp.ligand.cycle_1)
+    #         if args.steps > 1:
+    #             kp.ligand.add_cycle(kp.ligand.cycle_2)
+    #         if args.steps > 2:
+    #             kp.ligand.add_cycle(kp.ligand.cycle_3)
+    #
+    #         # if args.steps > 3:
+    #         #     kp.ligand.add_cycle(kp.ligand.cycle_4)
+    #         # if args.steps > 5:
+    #         #     kp.ligand.add_cycle(kp.ligand.cycle_6)
+    #         # if args.steps > 6:
+    #         #     kp.ligand.add_cycle(kp.ligand.cycle_7)
+    #         # if args.steps > 7:
+    #         #     kp.ligand.add_cycle(kp.ligand.cycle_8)
+    #
+    #         kp.main_script(run=args.run)
+    #         os.chdir(home_directory)
+
+    def main(self):
+        # make_and_cd(self.sub_directory)
+        if self.sub_directory == "Ls":
+            kp = KpMembraneSpecies(arguments=args)
+        else:
+            kp = KpMembraneSpecies(self_foreign=True, arguments=args)
+
+        self.add_steps(kp)
+        kp.main_script(run=args.run)
+
+    def p_test(self):
+        # make_and_cd(self.sub_directory)
+        home_directory = os.getcwd()
+        for d_zap in self.zap_diffusion:
+            make_and_cd("d_zap_{0}".format(d_zap))
+
+            if self.sub_directory == "Ls":
+                kp = KpMembraneSpecies(arguments=args)
+            else:
+                kp = KpMembraneSpecies(self_foreign=True, arguments=args)
+
+            kp.ligand.diffusion_constants.d_zap = d_zap
+            self.add_steps(kp)
+            kp.main_script(run=args.run)
+
+            os.chdir(home_directory)
 
 
 if __name__ == "__main__":
@@ -120,33 +195,53 @@ if __name__ == "__main__":
     directory_name = "{0}_step_spatial".format(args.steps)
     make_and_cd(directory_name)
 
-    sub_directories = ["Ls"]  # , "Ls_Lf_{0}".format(args.ls_lf)]
-    home_directory = os.getcwd()
+    sub_directories = ["Ls_Lf_{0}".format(args.ls_lf)]  # ["Ls" ,
 
     for sub_directory in sub_directories:
-        # make_and_cd(sub_directory)
-        if sub_directory == "Ls":
-            kp = KpMembraneSpecies(arguments=args)
-        else:
-            kp = KpMembraneSpecies(self_foreign=True, arguments=args)
+        run_simulations = Run(sub_directory)
 
-        kp.ligand.add_step_0()
+        # if args.steps < 3:
+        run_simulations.main()
 
-        if args.steps > 0:
-            kp.ligand.add_cycle(kp.ligand.cycle_1)
-        if args.steps > 1:
-            kp.ligand.add_cycle(kp.ligand.cycle_2)
+        # else:
+        #     run_simulations.p_test()
 
-        # if args.steps > 2:
-        #     kp.ligand.add_cycle(kp.ligand.cycle_3)
-        # if args.steps > 3:
-        #     kp.ligand.add_cycle(kp.ligand.cycle_4)
-        # if args.steps > 5:
-        #     kp.ligand.add_cycle(kp.ligand.cycle_6)
-        # if args.steps > 6:
-        #     kp.ligand.add_cycle(kp.ligand.cycle_7)
-        # if args.steps > 7:
-        #     kp.ligand.add_cycle(kp.ligand.cycle_8)
-
-        kp.main_script(run=args.run)
-        os.chdir(home_directory)
+    # directory_name = "{0}_step_spatial".format(args.steps)
+    # make_and_cd(directory_name)
+    #
+    # sub_directories = ["Ls_Lf_{0}".format(args.ls_lf)] # ["Ls" ,
+    # home_directory = os.getcwd()
+    #
+    # zap_diffusion = [10, 20, 50, 100, 200]
+    #
+    # for d_zap in zap_diffusion:
+    #     make_and_cd("d_zap_{0}".format(d_zap))
+    #
+    #     for sub_directory in sub_directories:
+    #         # make_and_cd(sub_directory)
+    #         if sub_directory == "Ls":
+    #             kp = KpMembraneSpecies(arguments=args)
+    #         else:
+    #             kp = KpMembraneSpecies(self_foreign=True, arguments=args)
+    #
+    #         kp.ligand.add_step_0()
+    #
+    #         if args.steps > 0:
+    #             kp.ligand.add_cycle(kp.ligand.cycle_1)
+    #         if args.steps > 1:
+    #             kp.ligand.add_cycle(kp.ligand.cycle_2)
+    #         if args.steps > 2:
+    #             kp.ligand.diffusion_constants.d_zap = d_zap
+    #             kp.ligand.add_cycle(kp.ligand.cycle_3)
+    #
+    #         # if args.steps > 3:
+    #         #     kp.ligand.add_cycle(kp.ligand.cycle_4)
+    #         # if args.steps > 5:
+    #         #     kp.ligand.add_cycle(kp.ligand.cycle_6)
+    #         # if args.steps > 6:
+    #         #     kp.ligand.add_cycle(kp.ligand.cycle_7)
+    #         # if args.steps > 7:
+    #         #     kp.ligand.add_cycle(kp.ligand.cycle_8)
+    #
+    #         kp.main_script(run=args.run)
+    #         os.chdir(home_directory)
