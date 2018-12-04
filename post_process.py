@@ -17,6 +17,11 @@ def getcolumnames(data):
     return columnames
 
 
+def find_index(dummy_file, string):
+    index_string = [string in x for x in dummy_file].index(True)
+    return index_string
+
+
 class PostProcess(object):
     def __init__(self, trajectory_file):
         self.trajectory_file = trajectory_file
