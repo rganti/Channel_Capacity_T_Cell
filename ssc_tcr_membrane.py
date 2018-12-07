@@ -37,6 +37,7 @@ class MembraneTcrSelfWithForeign(TcrCycleSelfWithForeign):
         self.diffusion_flag = True
         # self.num_samples = 1
         # self.p_ligand = [150]
+        # self.p_ligand = [2]
 
 
 class MembraneTcrSelfLigand(MembraneTcrSelfWithForeign):
@@ -58,14 +59,9 @@ class KpMembraneSpecies(KPRealistic):
         else:
             self.ligand = MembraneTcrSelfLigand(arguments=arguments)
 
-        self.run_time = 50
+        # self.run_time = 50
 
-        self.simulation_time = 180  # self.set_simulation_time()
-
-    def set_simulation_time(self):
-        simulation_time = self.run_time * (20.0 / 1000)
-
-        return simulation_time
+        # self.simulation_time = 180  # self.set_simulation_time()
 
     def define_diffusion(self, f):
 
@@ -114,51 +110,12 @@ class Run(object):
         self.sub_directory = sub_directory
         self.zap_diffusion = [20, 50, 100, 200]
 
-    def add_steps(self, kp):
-        kp.ligand.add_step_0()
-
-        if args.steps > 0:
-            kp.ligand.add_cycle(kp.ligand.cycle_1)
-        if args.steps > 1:
-            kp.ligand.add_cycle(kp.ligand.cycle_2)
-        if args.steps > 2:
-            kp.ligand.add_cycle(kp.ligand.cycle_3)
-
-    # def make_reactions(self):
-    #     home_directory = os.getcwd()
-    #     for sub_directory in self.sub_directories:
-    #
-    #         kp = self.create_classes(sub_directory)
-    #
-    #         kp.ligand.add_step_0()
-    #
-    #         if args.steps > 0:
-    #             kp.ligand.add_cycle(kp.ligand.cycle_1)
-    #         if args.steps > 1:
-    #             kp.ligand.add_cycle(kp.ligand.cycle_2)
-    #         if args.steps > 2:
-    #             kp.ligand.add_cycle(kp.ligand.cycle_3)
-    #
-    #         # if args.steps > 3:
-    #         #     kp.ligand.add_cycle(kp.ligand.cycle_4)
-    #         # if args.steps > 5:
-    #         #     kp.ligand.add_cycle(kp.ligand.cycle_6)
-    #         # if args.steps > 6:
-    #         #     kp.ligand.add_cycle(kp.ligand.cycle_7)
-    #         # if args.steps > 7:
-    #         #     kp.ligand.add_cycle(kp.ligand.cycle_8)
-    #
-    #         kp.main_script(run=args.run)
-    #         os.chdir(home_directory)
-
     def main(self):
-        # make_and_cd(self.sub_directory)
         if self.sub_directory == "Ls":
             kp = KpMembraneSpecies(arguments=args)
         else:
             kp = KpMembraneSpecies(self_foreign=True, arguments=args)
 
-        self.add_steps(kp)
         kp.main_script(run=args.run)
 
     def p_test(self):
@@ -173,7 +130,7 @@ class Run(object):
                 kp = KpMembraneSpecies(self_foreign=True, arguments=args)
 
             kp.ligand.diffusion_constants.d_zap = d_zap
-            self.add_steps(kp)
+
             kp.main_script(run=args.run)
 
             os.chdir(home_directory)
@@ -188,16 +145,18 @@ if __name__ == "__main__":
                         help="flag for checking if sims approach steady-state.")
     parser.add_argument('--steps', dest='steps', action='store', type=int, default=0,
                         help="number of KP steps.")
-    parser.add_argument('--ls_lf', dest='ls_lf', action='store', type=int, default=5,
+    parser.add_argument('--ls_lf', dest='ls_lf', action='store', type=int, default=3,
                         help="number of foreign ligands.")
     args = parser.parse_args()
 
-    directory_name = "{0}_step_spatial".format(args.steps)
+    directory_name = "{0}_step".format(args.steps)
     make_and_cd(directory_name)
 
-    sub_directories = ["Ls_Lf_{0}".format(args.ls_lf)]  # ["Ls" ,
+    sub_directories = ["Ls".format(args.ls_lf)]  # ["Ls" ,
 
     for sub_directory in sub_directories:
+        make_and_cd(sub_directory)
+
         run_simulations = Run(sub_directory)
 
         # if args.steps < 3:
