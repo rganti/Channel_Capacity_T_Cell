@@ -73,14 +73,12 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         if self.arguments.steps > 4:
             self.n_initial["LAT"] = self.initial.lat_0
 
-        self.num_samples = 1
-        self.p_ligand = [50]  # , 100, 150]
-
         self.record = ["Lf", "Ls"]
         self.output = ["Lf", "Ls"]
 
         self.record_flag = False
 
+        self.num_kp_steps = self.arguments.steps
         self.simulation_name = "kp_steps_" + str(self.num_kp_steps)
 
         self.k_L_off = {"Lf": self.rate_constants.k_foreign_off, "Ls": self.rate_constants.k_self_off}
@@ -182,14 +180,19 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
                 self.update_diffusion(i, self.diffusion_constants.d_l)
                 self.update_diffusion("R" + i, self.diffusion_constants.d_rl)
 
+    def set_record_flag(self, species, step, count):
+        if self.arguments.steps == step:
+            self.record_flag = True
+            if count == 0:
+                self.record.append(species)
+
     def cycle_1(self, i, count):
         final_product = "R" + i + "_Lck"
         self.modify_forward_reverse(["R" + i, "Lck"], [final_product], self.rate_constants.k_lck_on_R_pmhc,
                                     self.rate_constants.k_lck_off_R_pmhc)
         no_ligand = self.ligand_off(final_product, i)
 
-        if self.arguments.steps == 1:
-            self.record_flag = True
+        self.set_record_flag(no_ligand, 1, count)
 
         if count == 0:
             self.lck_off(no_ligand, self.rate_constants.k_lck_off_R, cycle=1)
@@ -210,15 +213,14 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
         no_ligand = self.ligand_off(final_product, i)
 
-        if self.arguments.steps == 2:
-            self.record_flag = True
-
         # New pathway back
         if count == 0:
             no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_RP, cycle=2)
 
             self.modify_forward_reverse([no_lck], ["R"], self.rate_constants.k_p_off_R,
                                         self.rate_constants.k_p_on_R)
+
+        self.set_record_flag(no_ligand, 2, count)
 
         if self.diffusion_flag:
             if count == 0:
@@ -236,20 +238,19 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
                                     self.rate_constants.k_zap_off_R_pmhc)
         no_ligand = self.ligand_off(final_product, i)
 
-        if self.arguments.steps == 3:
-            self.record_flag = True
-
         # New pathway back
         if count == 0:
             no_lck = self.lck_off(no_ligand, self.rate_constants.k_lck_off_zap_R)
 
             self.zap_off(no_lck)
 
+        self.set_record_flag(no_ligand, 3, count)
+
         if self.diffusion_flag:
             if count == 0:
                 self.update_diffusion("Zap", self.diffusion_constants.d_zap, location="Cytosol")
-                self.record_append("Zap in Plasma")
-                self.record_append("Zap in Cytosol")
+                # self.record_append("Zap in Plasma")
+                # self.record_append("Zap in Cytosol")
 
                 self.update_diffusion(no_ligand, self.diffusion_constants.d_lck)
                 self.update_diffusion(no_lck, self.diffusion_constants.d_r)
@@ -257,6 +258,16 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
             self.update_diffusion(final_product, self.diffusion_constants.d_lck)
 
         return final_product
+
+    def add_step_4(self):
+        # self.increment_step()
+        final_product = "Zap_P"
+        for i in self.output:
+            self.create_loop(["RP" + i + "_Lck_Zap"], ["RP" + i + "_Lck", final_product],
+                             self.rate_constants.k_p_on_zap_species)
+
+        self.create_loop([final_product], ["Zap"], self.rate_constants.k_p_off_zap_species)
+        self.record_append(final_product)
 
     def cycle_4(self, i, count):
         final_product = "RP" + i + "_Lck_Zap_P"
@@ -274,7 +285,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         return final_product
 
     def add_negative_feedback(self):
-        self.increment_step()
+        # self.increment_step()
         count = 0
         for i in self.output:
             self.create_loop(["RP" + i + "_Lck_Zap_P", "R" + i + "_Lck"], ["R" + i + "_LckI", "RP" + i + "_Lck_Zap_P"],
@@ -342,7 +353,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         return final_product
 
     def add_step_7(self):
-        self.increment_step()
+        # self.increment_step()
         final_product = "LATP"
         for i in self.output:
             self.create_loop(["RP" + i + "_Lck_Zap_P_LAT"], ["RP" + i + "_Lck_Zap_P", final_product],
@@ -352,7 +363,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         self.record_append(final_product)
 
     def add_step_8(self):
-        self.increment_step()
+        # self.increment_step()
         final_product = "Final_Product"
         self.modify_forward_reverse(["LATP"], [final_product], self.rate_constants.k_product_on,
                                     self.rate_constants.k_product_off)
@@ -366,7 +377,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         #     self.record_append(final_product)
 
     def add_nonspecific_positive_fb(self):
-        self.increment_step()
+        # self.increment_step()
         final_product = "Final_Product"
         self.create_loop(["LATP", final_product], [final_product, final_product],
                          self.rate_constants.k_positive_loop)
@@ -378,7 +389,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
     #                          self.rate_constants.k_positive_loop)
 
     def add_cycle(self, cycle):
-        self.increment_step()
+        # self.increment_step()
         count = 0
         for i in self.output:
             final_product = cycle(i, count)
@@ -396,14 +407,14 @@ class SscPositiveFbLoop(TcrCycleSelfWithForeign):
         self.n_initial["Ras_GAP"] = 10
 
     def add_step_8(self):
-        self.increment_step()
+        # self.increment_step()
         final_product = "LATP_Sos"
         self.modify_forward_reverse(["LATP", "Sos"], [final_product], self.rate_constants.k_sos_on,
                                     self.rate_constants.k_sos_off)
         self.record_append(final_product)
 
     def add_step_9(self):
-        self.increment_step()
+        # self.increment_step()
         final_product_1 = "LATP_Sos_Ras_GDP"
         self.modify_forward_reverse(["LATP_Sos", "Ras_GDP"], [final_product_1], self.rate_constants.k_sos_on_rgdp,
                                     self.rate_constants.k_sos_off_rgdp)
@@ -413,7 +424,7 @@ class SscPositiveFbLoop(TcrCycleSelfWithForeign):
                                     self.rate_constants.k_sos_off_rgtp)
 
     def add_step_10(self):
-        self.increment_step()
+        # self.increment_step()
         previous_product_1 = "LATP_Sos_Ras_GTP"
         final_product_1 = previous_product_1 + "_Ras_GDP"
         self.modify_forward_reverse([previous_product_1, "Ras_GDP"], [final_product_1],
@@ -477,13 +488,17 @@ class KPRealistic(KPSingleSpecies):
             self.ligand = TcrCycleSelfLigand(arguments=arguments)
 
         self.num_files = 100
-        self.run_time = 500
-        self.simulation_time = self.set_simulation_time()
+        self.run_time = 50
+
+        self.num_samples = 1
+        self.p_ligand = [100]  # , 100, 150]
+
+        # self.simulation_time = self.set_simulation_time()
 
         self.file_list = []
 
     def set_simulation_time(self):
-        simulation_time = self.run_time * (20.0 / 1000)
+        simulation_time = self.run_time / 2  # * (200.0 / 1000)
 
         return simulation_time
 
@@ -517,7 +532,8 @@ class KPRealistic(KPSingleSpecies):
         if self.arguments.steps > 2:
             self.ligand.add_cycle(self.ligand.cycle_3)
         if self.arguments.steps > 3:
-            self.ligand.add_cycle(self.ligand.cycle_4)
+            self.ligand.add_step_4()
+            # self.ligand.add_cycle(self.ligand.cycle_4)
         if self.arguments.steps > 5:
             self.ligand.add_cycle(self.ligand.cycle_6)
         if self.arguments.steps > 6:
@@ -527,10 +543,11 @@ class KPRealistic(KPSingleSpecies):
 
     def main_script(self, run=False):
         sample = []
-        # self.ligand.record = self.ligand.record[:2] + self.ligand.record[-6:]
-        for i in range(len(self.ligand.p_ligand)):
+
+        for i in range(len(self.p_ligand)):
             directory = "sample_" + str(i)
-            s = self.ligand.p_ligand[i]
+
+            s = self.p_ligand[i]
             sample.append(s)
             self.ligand.change_ligand_concentration(s)
             simulation_name = self.ligand.simulation_name
@@ -597,30 +614,5 @@ if __name__ == "__main__":
         kp = KPRealistic(self_foreign=True, arguments=args)
     else:
         raise Exception("Need to specify Ls or Ls_Lf")
-
-    # kp.ligand.add_step_0()
-    #
-    # if args.steps > 0:
-    #     kp.ligand.add_cycle(kp.ligand.cycle_1)
-    # if args.steps > 1:
-    #     kp.ligand.add_cycle(kp.ligand.cycle_2)
-    # if args.steps > 2:
-    #     kp.ligand.add_cycle(kp.ligand.cycle_3)
-    # if args.steps > 3:
-    #     kp.ligand.add_cycle(kp.ligand.cycle_4)
-    # # if args.steps > 4:
-    # #     kp.ligand.add_negative_feedback()
-    # if args.steps > 5:
-    #     kp.ligand.add_cycle(kp.ligand.cycle_6)
-    # if args.steps > 6:
-    #     # kp.ligand.add_step_7()
-    #     kp.ligand.add_cycle(kp.ligand.cycle_7)
-    # if args.steps > 7:
-    #     # kp.ligand.add_step_8()
-    #     kp.ligand.add_cycle(kp.ligand.cycle_8)
-    # if args.steps > 8:
-    #     kp.ligand.add_step_9()
-    #     kp.ligand.add_step_10()
-    #     # kp.ligand.add_nonspecific_positive_fb()
 
     kp.main_script(run=args.run)
