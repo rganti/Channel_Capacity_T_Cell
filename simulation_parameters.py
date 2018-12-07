@@ -1,6 +1,6 @@
 class DefineRegion(object):
     def __init__(self):
-        self.x = self.y = 20.0
+        self.x = self.y = 10.0
         self.depth = 1.0
         self.subvolume_edge = 1.0
         self.cytosol_depth = 10.0
@@ -44,7 +44,7 @@ class BindingParameters(object):
         self.k_self_off = 2.0  # 10.0 * self.k_foreign_off
 
         # First Cycle Lck binding
-        self.on_rate = 2.0
+        self.on_rate = 2.0  # / 10.0
 
         self.k_lck_on_R_pmhc = (self.on_rate / self.initial.lck_0)  # * 100.0
         self.k_lck_off_R_pmhc = self.k_foreign_off / 40.0
@@ -179,7 +179,7 @@ class MembraneBindingParameters(object):
         self.k_foreign_off = self.rates.k_foreign_off
         self.k_self_off = self.rates.k_self_off
 
-        # Lck binding
+        # Lck binding - 1st cycle
         self.on_rate = self.rates.on_rate
 
         self.k_lck_on_R_pmhc = (self.on_rate / self.initial.lck_0) * self.region.num_chambers
@@ -188,7 +188,7 @@ class MembraneBindingParameters(object):
         self.k_lck_on_R = self.rates.k_lck_on_R * self.region.num_chambers
         self.k_lck_off_R = self.rates.k_lck_off_R
 
-        # ITAM phosphorylation
+        # ITAM phosphorylation - 2nd cycle
 
         self.k_p_on_R_pmhc = self.on_rate
         self.k_p_off_R_pmhc = self.rates.k_p_off_R_pmhc
@@ -199,7 +199,7 @@ class MembraneBindingParameters(object):
         self.k_p_on_R = self.rates.k_p_on_R
         self.k_p_off_R = self.rates.k_p_off_R
 
-        # Zap 70 binding to ITAMs
+        # Zap 70 binding to ITAMs - 3rd cycle
 
         self.k_zap_on_R_pmhc = (self.on_rate / self.initial.zap_0) * self.region.num_chambers  # * 100.0
         self.k_zap_off_R_pmhc = self.rates.k_zap_off_R_pmhc
@@ -209,3 +209,8 @@ class MembraneBindingParameters(object):
 
         self.k_zap_on_R = self.rates.k_zap_on_R * self.region.num_chambers
         self.k_zap_off_R = self.rates.k_zap_off_R
+
+        # Fourth Cycle phosphorylate zap
+
+        self.k_p_on_zap_species = self.on_rate  # / 10.0
+        self.k_p_off_zap_species = 0.1  # self.k_p_off_R_pmhc
