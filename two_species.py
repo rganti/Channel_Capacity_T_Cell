@@ -286,10 +286,16 @@ class KPSingleSpecies(object):
         self.num_files = 100
         self.run_time = 100
         self.simulation_time = 2
+        self.single_molecule = False
 
         self.home_directory = os.getcwd()
 
         self.num_kp_steps = 1
+
+    def set_simulation_time(self):
+        simulation_time = self.run_time * (20.0 / 1000)
+
+        return simulation_time
 
     def set_time_step(self):
         if self.arguments:
@@ -356,7 +362,7 @@ class KPSingleSpecies(object):
         q.write("#PBS -V\n")
         q.write("#PBS -l walltime={1},nodes=1:ppn=1 -N {0}\n\n".format(simulation_name,
                                                                        datetime.timedelta(
-                                                                           minutes=self.simulation_time)))
+                                                                           minutes=self.set_simulation_time())))
         q.write("cd $PBS_O_WORKDIR\n\n")
         q.write("echo $PBS_JOBID > job_id\n")
         q.write("EXE_FILE={0}\n".format(simulation_name))
@@ -371,6 +377,9 @@ class KPSingleSpecies(object):
         q.write("done\n\n")
         q.write("python ~/SSC_python_modules/post_process.py --num_files {0} "
                 "--run_time $RUN_TIME --time_step $STEP\n".format(self.num_files))
+        if self.single_molecule:
+            q.write("wait \n")
+            q.write("python ~/SSC_python_modules/kp_sm_post_process.py \n")
         if self.arguments.ss:
             q.write("python ~/SSC_python_modules/plot.py \n")
         q.close()
