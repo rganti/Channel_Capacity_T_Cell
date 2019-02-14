@@ -6,16 +6,17 @@ import subprocess
 import numpy as np
 
 from realistic_network import make_and_cd
-from simulation_parameters import BindingParameters
 
 
 class LaunchQsub(object):
-    def __init__(self, steps, lf=30, self_foreign=False, early_pos=False):
+    def __init__(self, steps, lf=30, self_foreign=False, early_pos=False, toy_model=False):
         self.steps = steps
         self.lf = lf
 
         self.self_foreign = self_foreign
         self.early_pos = early_pos
+        self.toy_model = toy_model
+
         self.simulation_name = "ODE_steps_" + str(self.steps)
         self.simulation_time = 10
 
@@ -35,6 +36,8 @@ class LaunchQsub(object):
                 q.write(
                     "python ~/SSC_python_modules/pysb_t_cell_network.py --steps {0} --lf {1} --early_pos_fb\n".format(
                         self.steps, self.lf))
+            elif self.toy_model:
+                q.write("python ~/SSC_python_modules/toy_model.py --lf \n")
             else:
                 q.write("python ~/SSC_python_modules/pysb_t_cell_network.py --steps {0} --lf {1}\n".format(self.steps,
                                                                                                            self.lf))
@@ -42,9 +45,12 @@ class LaunchQsub(object):
         else:
             if self.early_pos:
                 q.write(
-                    "python ~/SSC_python_modules/pysb_t_cell_network.py --steps {0} --early_pos_fb".format(self.steps))
+                    "python ~/SSC_python_modules/pysb_t_cell_network.py --steps {0} --early_pos_fb\n".format(
+                        self.steps))
+            elif self.toy_model:
+                q.write("python ~/SSC_python_modules/toy_model.py \n")
             else:
-                q.write("python ~/SSC_python_modules/pysb_t_cell_network.py --steps {0}".format(self.steps))
+                q.write("python ~/SSC_python_modules/pysb_t_cell_network.py --steps {0}\n".format(self.steps))
 
         q.close()
 
@@ -117,12 +123,12 @@ if __name__ == "__main__":
                         help="number of foreign ligands.")
     parser.add_argument('--early_pos', dest='early_pos', action='store_true', default=False,
                         help="flag for early positive feedback loop.")
+    parser.add_argument('--toy_model', dest='toy_model', action='store_true', default=False,
+                        help="flag for running toy model calculations.")
 
     args = parser.parse_args()
 
-    binding_parameters = BindingParameters()
-
-    make_and_cd("{0}_step".format(args.steps, binding_parameters.k_negative_loop))
+    make_and_cd("{0}_step".format(args.steps))
 
     sub_directories = ["Ls", "Ls_Lf_{0}".format(args.lf)]
     home_directory = os.getcwd()
@@ -135,11 +141,15 @@ if __name__ == "__main__":
         if directory == "Ls_Lf_{0}".format(args.lf):
             if args.early_pos:
                 qsub = LaunchQsub(args.steps, lf=args.lf, self_foreign=True, early_pos=True)
+            elif args.toy_model:
+                qsub = LaunchQsub(args.steps, lf=args.lf, self_foreign=True)
             else:
                 qsub = LaunchQsub(args.steps, lf=args.lf, self_foreign=True)
         else:
             if args.early_pos:
                 qsub = LaunchQsub(args.steps, early_pos=True)
+            elif args.toy_model:
+                qsub = LaunchQsub(args.steps)
             else:
                 qsub = LaunchQsub(args.steps)
 
