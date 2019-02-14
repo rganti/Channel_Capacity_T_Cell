@@ -37,10 +37,10 @@ class InformationCapacity(object):
             self.self_column_names = self.self_column[0].split()
 
         self.estimator = estimator
-        self.bins = self.calculate_bins()
-        self.p_0_integral = 0
+        self.capacity, self.number_of_bins, self.p0_integral = self.calculate_ic()
+        self.bins = self.calculate_bins(num_bins=self.number_of_bins)
 
-    def calculate_bins(self, num_bins=500):
+    def calculate_bins(self, num_bins=100):
         count, self_bins = np.histogram(self.self_output, bins=self.estimator, density=True)
         count, foreign_bins = np.histogram(self.foreign_output, bins=self.estimator, density=True)
 
@@ -121,10 +121,11 @@ class InformationCapacity(object):
     #     kl_cn_dn = np.trapz(count_cn * np.nan_to_num(np.log2(count_cn/count_dn)), dx=bin_width)
     #     return kl_cn_dn
 
-    def calculate_ic(self):
-        number_of_bins = 100
-
-        while self.p_0_integral < 0.99:
+    def compute_bins(self):
+        number_of_bins = 50
+        bins = 0
+        p_0_integral = 0
+        while p_0_integral < 0.99:
             bins = self.calculate_bins(num_bins=number_of_bins)
             count_cn = self.count_cn(bins)
             count_dn = self.count_dn(bins)
@@ -132,23 +133,42 @@ class InformationCapacity(object):
 
             p_O = 0.5 * (count_cn + count_dn)
 
-            self.p_0_integral = np.trapz(p_O, dx=bin_width)
-            print("p(O) integral = " + str(self.p_0_integral))
+            p_0_integral = np.trapz(p_O, dx=bin_width)
+            # print("p(O) integral = " + str(p_0_integral))
+
+            number_of_bins += 50
+
+        return bins
+
+    def calculate_ic(self):
+        number_of_bins = 50
+        C = 0
+        p_0_integral = 0
+        while p_0_integral < 0.99:
+            bins = self.calculate_bins(num_bins=number_of_bins)
+            count_cn = self.count_cn(bins)
+            count_dn = self.count_dn(bins)
+            bin_width = bins[1] - bins[0]
+
+            p_O = 0.5 * (count_cn + count_dn)
+
+            p_0_integral = np.trapz(p_O, dx=bin_width)
+            # print("p(O) integral = " + str(p_0_integral))
 
             term_1_c0 = 0.5 * count_cn * np.nan_to_num(np.log2(count_cn / p_O))
             term_2_d0 = 0.5 * count_dn * np.nan_to_num(np.log2(count_dn / p_O))
             C = np.trapz(term_1_c0 + term_2_d0, dx=bin_width)
-            print("C = " + str(C))
+            # print("C = " + str(C))
 
-            if self.p_0_integral == C:
-                print("C == P(O) integral: " + str(self.p_0_integral == C))
+            if p_0_integral == C:
+                # print("C == P(O) integral: " + str(p_0_integral == C))
                 C = 1.00
-                print("New C " + str(C))
+                # print("New C " + str(C))
                 break
 
-            number_of_bins += 50
+            number_of_bins += 30
 
-        return C
+        return C, number_of_bins, p_0_integral
 
     def alternate_calculate_ic(self):
         bins = self.calculate_bins(num_bins=500)
@@ -203,10 +223,9 @@ def check_binning():
     foreign_end_step, bins, _ = plt.hist(foreign_output_end_step, bins=100, normed=True, label="P(f) end step")
     plt.legend()
 
-
-if __name__ == "__main__":
-    ic = InformationCapacity()
-    ic.calculate_ic()
+# if __name__ == "__main__":
+#     ic = InformationCapacity()
+#     ic.calculate_ic()
 
     # ic.alternate_calculate_ic()
     # check_binning()
