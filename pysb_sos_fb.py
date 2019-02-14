@@ -176,6 +176,13 @@ class SoSFeedback(object):
         # np.savetxt("RasGTP", output, fmt='%f')
 
 
+class SoSFeedbackLigandSpecific(SoSFeedback):
+    def __init__(self):
+        SoSFeedback.__init__(self)
+
+        self.sos_total = [round(i) for i in np.linspace(25, 500, num=40)]
+
+
 class LaunchQsub(object):
     def __init__(self):
         self.simulation_name = "Sos_FB"
