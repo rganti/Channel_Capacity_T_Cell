@@ -18,20 +18,20 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     steps = [int(s) for s in os.path.basename(os.getcwd()) if s.isdigit()][0]
-    lf = args.lf
+    foreign_directory = [d for d in os.listdir(".") if 'Ls_Lf' in d][0]
 
-    ic_lf = InformationCapacity(foreign_directory="Ls_Lf_{0}/".format(lf),
+    ic_lf = InformationCapacity(foreign_directory=foreign_directory + "/",
                                 self_directory="Ls/",
                                 limiting="self")
+    print("num_bins = " + str(ic_lf.number_of_bins))
     ic_lf.plot_cn()
     ic_lf.plot_dn()
-    plt.legend()
 
-    print("[L_f] = {0}".format(lf))
+    plt.legend()
 
     if args.xlo and args.xhi:
         plt.xlim(args.xlo, args.xhi)
 
-    plt.title("{:.0f} Steps: C = {:.3f}, P_0_integral = {:.3f}".format(steps, ic_lf.calculate_ic(), ic_lf.p_0_integral))
-
-    plt.savefig("histograms_lf_{0}.pdf".format(lf), format="pdf")
+    plt.title("{:.0f} Steps: C = {:.3f}".format(steps, ic_lf.capacity))
+    # plt.title("10 Steps: C = {:.3f}".format(ic_lf.calculate_ic()))
+    plt.savefig("histograms.pdf", format="pdf")
