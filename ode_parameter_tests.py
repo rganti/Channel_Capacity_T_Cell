@@ -12,21 +12,12 @@ from simulation_parameters import BindingParameters
 
 
 class ParameterTesting(object):
-    def __init__(self, steps=8):
+    def __init__(self, steps=8, lf=30):
         self.binding_constants = BindingParameters()
 
-        self.lf = 1
+        self.lf = lf
         self.sub_directories = ["Ls", "Ls_Lf_{0}".format(self.lf)]
         self.steps = steps
-        #
-        # self.k_8_1 = np.round(np.logspace(-3.0, -2.5, num=10), 6)
-        # self.param_grid = {'k_8_1': self.k_8_1}
-        #
-        # if self.steps > 8:
-        #     self.param_grid['k_9_1'] = np.round(np.logspace(-5.0, -2.5, num=8), 6)  # np.linspace(0.00005, 0.0003, 3)
-        #
-        # self.grid = ParameterGrid(self.param_grid)
-        # print(list(self.grid))
 
         self.paths = []
         self.parameters = []
@@ -121,6 +112,38 @@ class ParameterTesting(object):
         pickle.dump(param_grid, pickle_out)
         pickle_out.close()
 
+    def run_real_neg_fb_parameter_search(self):
+        count = 0
+
+        on_rates = [0.5, 1.0, 2.0, 3.0, 5.0]
+        negative_fb = [0.01, 0.005, 0.001, 0.0005, 0.0001]
+        param_grid = {}
+
+        for on_rate in on_rates:
+            param_grid['k_lck_on_RL'] = on_rate / self.binding_constants.initial.lck_0
+            param_grid['k_p_on_R_pmhc'] = on_rate
+            param_grid['k_zap_on_R_pmhc'] = on_rate / self.binding_constants.initial.zap_0
+            param_grid['k_p_on_zap_species'] = on_rate
+            param_grid['k_lat_on_species'] = on_rate / self.binding_constants.initial.lat_0
+            param_grid['kp_on_lat1'] = on_rate
+            param_grid['k_p_lat_on_species'] = on_rate / 10.0
+
+            for i in negative_fb:
+                param_grid['k_lcki'] = i
+                self.create_submit(count, param_grid)
+
+                count += 1
+
+        df = pd.DataFrame({'file_path': self.paths})
+        df.to_csv("./file_paths", sep='\t')
+
+        df_2 = pd.DataFrame({'file_path': self.paths, 'parameters': self.parameters})
+        df_2.to_csv("./parameters", sep='\t')
+
+        pickle_out = open("parameter_range.pickle", "wb")
+        pickle.dump(param_grid, pickle_out)
+        pickle_out.close()
+
     def run_parameter_search(self):
         count = 0
 
@@ -189,11 +212,12 @@ class ParameterTesting(object):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Submitting ode calculations as function of steps",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--steps', dest='steps', action='store', type=int, default=9, help="number of KP steps.")
+    parser.add_argument('--steps', dest='steps', action='store', type=int, default=8, help="number of KP steps.")
     parser.add_argument('--run', action='store_true', default=False, help='Flag for submitting simulations.')
+    parser.add_argument('--lf', dest='lf', action='store', type=int, default=10, help="number of foreign ligands.")
 
     args = parser.parse_args()
 
-    p_test = ParameterTesting(steps=args.steps)
+    p_test = ParameterTesting(steps=args.steps, lf=args.lf)
 
-    p_test.run_neg_fb_parameter_search()
+    p_test.run_real_neg_fb_parameter_search()
