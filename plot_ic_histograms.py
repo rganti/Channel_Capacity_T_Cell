@@ -18,23 +18,18 @@ if __name__ == "__main__":
 
     num_steps = []
     capacity = []
-    for i in range(1, 10):
+    for i in range(1, 9):
         if i == 5:
             continue
 
-        if i > 5:
-            if args.fb:
-                file_path = "{0}_step_k_pos_{1}/".format(i, args.fb)
-            else:
-                file_path = "{0}_step/".format(i)
+        if args.fb:
+            file_path = "{0}_step_k_pos_{1}/".format(i, args.fb)
         else:
-            file_path = "../slow_lat/{0}_step/".format(i)
+            file_path = "{0}_step/".format(i)
 
         num_steps.append(i)
         ic_lf = InformationCapacity(foreign_directory=file_path + "Ls_Lf_{0}/".format(lf),
                                     self_directory=file_path + "Ls/", limiting="self")
-        # ic_lf.plot_cn()
-        # ic_lf.plot_dn()
 
         if i == 1:
             xhi = 1500
@@ -49,20 +44,22 @@ if __name__ == "__main__":
         else:
             xhi = 400
 
-        # plt.xlim(0, xhi)
+        plt.xlim(0, xhi)
+        plt.title(
+            "{:.0f} Steps: C = {:.3f}, P_0_integral = {:.3f}".format(steps, ic_lf.capacity, ic_lf.p0_integral))
         # plt.title("{0} Steps: IC = {1}".format(i, ic_lf.calculate_ic()))
-        # plt.legend()
-        # plt.savefig(file_path + "{0}_step.pdf".format(i), format="pdf")
-        # plt.close()
-        #
-        capacity.append(ic_lf.calculate_ic())
+        plt.legend()
+        plt.savefig(file_path + "{0}_step.pdf".format(i), format="pdf")
+        plt.close()
 
-        plt.plot(num_steps, capacity, linestyle='-', marker='o', label="Equal Rates")
+        capacity.append(ic_lf.capacity)
+
+        plt.plot(num_steps, capacity, linestyle='-', marker='o', label="$k_{on} = 1.0s^{-1}$")
 
         plt.legend()
         plt.xlabel("Number of Steps", size=15)
         plt.ylabel("C (bits)", size=15)
-        plt.xlim(0, 10)
+        plt.xlim(0, 8)
         plt.ylim(0, 1)
         plt.locator_params(axis='x', nbins=11)
         plt.savefig(file_path + "ic_{0}_step.pdf".format(i), format="pdf")
