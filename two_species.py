@@ -292,8 +292,11 @@ class KPSingleSpecies(object):
 
         self.num_kp_steps = 1
 
-    def set_simulation_time(self):
-        simulation_time = self.run_time * (20.0 / 1000)
+    def set_simulation_time(self, ls=500):
+        if ls < 500:
+            simulation_time = 4.0
+        else:
+            simulation_time = self.run_time * (20.0 / 1000)
 
         return simulation_time
 
@@ -355,14 +358,14 @@ class KPSingleSpecies(object):
         n.close()
         f.close()
 
-    def generate_qsub(self, simulation_name, time_step):
+    def generate_qsub(self, simulation_name, time_step, ls=500):
         q = open("qsub.sh", "w")
         q.write("#PBS -m ae\n")
         q.write("#PBS -q short\n")
         q.write("#PBS -V\n")
         q.write("#PBS -l walltime={1},nodes=1:ppn=1 -N {0}\n\n".format(simulation_name,
                                                                        datetime.timedelta(
-                                                                           minutes=self.set_simulation_time())))
+                                                                           minutes=self.set_simulation_time(ls=ls))))
         q.write("cd $PBS_O_WORKDIR\n\n")
         q.write("echo $PBS_JOBID > job_id\n")
         q.write("EXE_FILE={0}\n".format(simulation_name))
@@ -384,10 +387,10 @@ class KPSingleSpecies(object):
             q.write("python ~/SSC_python_modules/plot.py \n")
         q.close()
 
-    def generate(self, simulation_name, time_step):
+    def generate(self, simulation_name, time_step, ls=500):
         self.generate_ssc_script(simulation_name)
         compile_script(simulation_name + ".rxn")
-        self.generate_qsub(simulation_name, time_step)
+        self.generate_qsub(simulation_name, time_step, ls=ls)
 
     def single_add_step(self):
         self.num_kp_steps += 1
