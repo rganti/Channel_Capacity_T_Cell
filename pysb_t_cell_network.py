@@ -51,7 +51,7 @@ class PysbTcrSelfWithForeign(object):
         self.ls = 1000
         self.steps = steps
 
-        self.run_time = 10000
+        self.run_time = 1000
         self.tspan = np.linspace(0, self.run_time)
 
         self.mu = 6
@@ -321,15 +321,37 @@ class PysbTcrSelfWithForeign(object):
         add_new_monomer("ZapI")
 
         if self.self_foreign:
-            Rule('Neg_fb_1_self', eval("RPLs_Lck_Zap_P_LAT()") + eval('Zap()') >> eval(
-                'ZapI()') + eval('RPLs_Lck_Zap_P_LAT()'), k_neg_fb)
-            Rule('Neg_fb_1_foreign', eval("RPLf_Lck_Zap_P_LAT()") + eval('Zap()') >> eval(
-                'ZapI()') + eval("RPLf_Lck_Zap_P_LAT()"), k_neg_fb)
+            Rule('Neg_fb_1_self', eval("RPLs_Lck_Zap_P_LATP()") + eval('Zap()') >> eval(
+                'ZapI()') + eval('RPLs_Lck_Zap_P_LATP()'), k_neg_fb)
+            Rule('Neg_fb_1_foreign', eval("RPLf_Lck_Zap_P_LATP()") + eval('Zap()') >> eval(
+                'ZapI()') + eval("RPLf_Lck_Zap_P_LATP()"), k_neg_fb)
         else:
-            Rule('Neg_fb_1', eval("RPLs_Lck_Zap_P_LAT()") + eval('Zap()') >> eval(
-                'ZapI()') + eval('RPLs_Lck_Zap_P_LAT()'), k_neg_fb)
+            Rule('Neg_fb_1', eval("RPLs_Lck_Zap_P_LATP()") + eval('Zap()') >> eval(
+                'ZapI()') + eval('RPLs_Lck_Zap_P_LATP()'), k_neg_fb)
 
         Rule('Neg_fb_2', ZapI() >> Zap(), k_lcki)
+
+    def add_negative_feedback_late_lat(self):
+
+        if self.p_flag:
+            Parameter('k_neg_fb', self.parameters['k_neg_fb'])
+            Parameter('k_lcki', self.parameters['k_lcki'])
+        else:
+            Parameter('k_neg_fb', self.rate_constants.k_negative_loop)
+            Parameter('k_lcki', self.rate_constants.k_lcki)
+
+        add_new_monomer("LATI")
+
+        if self.self_foreign:
+            Rule('Neg_fb_1_self', eval("RPLs_Lck_Zap_P_LATP()") + eval('LAT()') >> eval(
+                'LATI()') + eval('RPLs_Lck_Zap_P_LATP()'), k_neg_fb)
+            Rule('Neg_fb_1_foreign', eval("RPLf_Lck_Zap_P_LATP()") + eval('LAT()') >> eval(
+                'LATI()') + eval("RPLf_Lck_Zap_P_LATP()"), k_neg_fb)
+        else:
+            Rule('Neg_fb_1', eval("RPLs_Lck_Zap_P_LATP()") + eval('LAT()') >> eval(
+                'LATI()') + eval('RPLs_Lck_Zap_P_LATP()'), k_neg_fb)
+
+        Rule('Neg_fb_2', LATI() >> LAT(), k_lcki)
 
     def cycle_6(self, i):
 
@@ -395,7 +417,7 @@ class PysbTcrSelfWithForeign(object):
             if self.p_flag:
                 Parameter('k_p_lat_on_species', self.parameters['k_p_lat_on_species'])
             else:
-                Parameter('k_p_lat_on_species', self.rate_constants.k_p_lat_on_species)
+                Parameter('k_p_lat_on_species', self.rate_constants.k_p_lat_2)
 
         previous_product = self.cycle_7(i)
         product = "LATPP"
@@ -430,7 +452,7 @@ class PysbTcrSelfWithForeign(object):
     def add_step_8_sos(self, i):
 
         previous_product = self.step_8(i)
-        product = "LATPP_Sos"
+        product = previous_product + "_Sos"
 
         if i == "Ls":
             if self.p_flag:
@@ -576,27 +598,25 @@ class PysbTcrSelfWithForeign(object):
                 product = self.cycle_7(i)
             elif self.steps == 8:
                 product = self.step_8(i)
-                # product = self.add_step_8_sos(i)
             elif self.steps == 9:
                 product = self.add_step_8_sos(i)
             else:
                 product = self.add_step_10(i)
 
-                # product = self.add_step_9_sos(i)
-                # product = self.non_specific_step_8(i)
-            # else:
-            #     # product = self.add_positive_feedback(i)
-            #     product = self.add_positive_feedback_nonspecific(i)
-
             if "O_{0}".format(product) not in observables:
                 observables.append("O_{0}".format(product))
+
+        # NEGATIVE FEEDBACK LOOP has been added here!!!!
 
         if self.steps > 4:
             self.add_negative_feedback()
 
+        # if self.steps > 7:
+        #     self.add_negative_feedback_late_lat()
+
         return observables
 
-    def main(self):
+    def main_truncated_time(self):
         output = []
         ligand_array = []
         observables = self.make_model()
@@ -631,6 +651,260 @@ class PysbTcrSelfWithForeign(object):
         np.savetxt("Ligand_concentrations", ligand_array, fmt='%f')
         np.savetxt("output", output, fmt='%f')
 
+    def main(self):
+        output = []
+        ligand_array = []
+        observables = self.make_model()
+
+        write_columns(observables)
+        write_model_attributes(self.model.rules, "rules")
+        write_model_attributes(self.model.parameters, "parameters")
+        write_model_attributes(self.model.observables, "observables")
+
+        np.savetxt("time", self.tspan, fmt='%f')
+
+        for ligand in self.p_ligand:
+            self.model.parameters['Ls_0'].value = ligand
+            ligand_array.append(ligand)
+
+            y = odesolve(self.model, self.tspan, compiler="python")
+
+            if len(observables) > 1:
+                output_array = y[observables[0]] + y[observables[1]]
+                if self.num_samples == 1:
+                    np.savetxt("{0}_output".format(observables[0]), y[observables[0]], fmt='%f')
+                    np.savetxt("{0}_output".format(observables[1]), y[observables[1]], fmt='%f')
+                    np.savetxt("output_array", output_array, fmt='%f')
+
+                output.append(output_array[-1])
+            else:
+                output_array = y[observables[0]]
+                output.append(output_array[-1])
+
+        np.savetxt("Ligand_concentrations", ligand_array, fmt='%f')
+        np.savetxt("output", output, fmt='%f')
+
+
+class NonSpecificEarlyPositiveFeedback(PysbTcrSelfWithForeign):
+    def __init__(self, steps=3, self_foreign=False, lf=30):
+        PysbTcrSelfWithForeign.__init__(self, steps=steps, self_foreign=self_foreign, lf=lf)
+
+    def step_4(self, i):
+
+        if i == "Ls":
+            if self.p_flag:
+                Parameter('k_p_on_zap_species', self.parameters['k_p_on_zap_species'])
+            else:
+                Parameter('k_p_on_zap_species', self.rate_constants.k_p_on_zap_species)
+
+            Parameter('k_p_off_zap_species', self.rate_constants.k_p_off_zap_species)
+
+        previous_product = self.cycle_3(i)
+        product = "Zap_P"
+        if i == "Ls":
+            add_new_monomer(product)
+
+        Rule('{0}_cat'.format(previous_product),
+             eval('{0}()'.format(previous_product)) >> eval('{0}()'.format("RP{0}_Lck".format(i))) +
+             eval('{0}()'.format(product)), k_p_on_zap_species)
+
+        if i == "Ls":
+            add_observable(product)
+
+            Rule("{0}_uncat".format(product), eval('{0}()'.format(product)) >> Zap(), k_p_off_R_pmhc)
+
+        return product
+
+    def add_step_9(self, i):
+        previous_product = self.step_4(i)
+        product_rd = previous_product + "_Ras_GDP"
+
+        if i == "Ls":
+            Parameter('k_sos_on_rgdp', self.rate_constants.k_sos_on_rgdp)
+            Parameter('k_sos_off_rgdp', self.rate_constants.k_sos_off_rgdp)
+
+            add_new_monomer(product_rd)
+
+            Rule('{0}_bind'.format(product_rd),
+                 eval('{0}()'.format(previous_product)) + Ras_GDP() | eval('{0}()'.format(product_rd)),
+                 k_sos_on_rgdp, k_sos_off_rgdp)
+
+        product_rt = previous_product + "_Ras_GTP"
+
+        if i == "Ls":
+            Parameter('k_sos_on_rgtp', self.rate_constants.k_sos_on_rgtp)
+            Parameter('k_sos_off_rgtp', self.rate_constants.k_sos_off_rgtp)
+
+            add_new_monomer(product_rt)
+
+            Rule('{0}_bind'.format(product_rt),
+                 eval('{0}()'.format(previous_product)) + Ras_GTP() | eval('{0}()'.format(product_rt)),
+                 k_sos_on_rgtp, k_sos_off_rgtp)
+
+        return product_rd, product_rt
+
+    def make_model(self):
+
+        self.define_monomers()
+        self.define_rates()
+
+        observables = []
+        for i in self.output:
+            if self.steps == 0:
+                product = self.add_step_0(i)
+            elif self.steps == 1:
+                product = self.cycle_1(i)
+            elif self.steps == 2:
+                product = self.cycle_2(i)
+            elif self.steps == 3:
+                product = self.cycle_3(i)
+            elif self.steps == 4:
+                product = self.step_4(i)
+            else:
+                product = self.add_step_10(i)
+
+            if "O_{0}".format(product) not in observables:
+                observables.append("O_{0}".format(product))
+
+        return observables
+
+
+class EarlyPositiveFeedback(PysbTcrSelfWithForeign):
+    def __init__(self, steps=3, self_foreign=False, lf=30):
+        PysbTcrSelfWithForeign.__init__(self, steps=steps, self_foreign=self_foreign, lf=lf)
+
+    def add_step_8_sos(self, i):
+        if i == "Ls":
+            if self.p_flag:
+                Parameter('k_sos_on', self.parameters['k_8_1'])
+            else:
+                Parameter('k_sos_on', self.rate_constants.k_sos_on)
+
+            Parameter('k_sos_off', self.rate_constants.k_sos_off)
+
+        previous_product = self.cycle_3(i)
+        product = previous_product + "_Sos"
+
+        add_new_monomer(product)
+        Rule("{0}_bind".format(product), eval('{0}()'.format(previous_product)) + Sos() | eval('{0}()'.format(product)),
+             k_sos_on, k_sos_off)
+        add_observable(product)
+
+        return product
+
+    def add_step_9(self, i):
+        if i == "Ls":
+            Parameter('k_sos_on_rgdp', self.rate_constants.k_sos_on_rgdp)
+            Parameter('k_sos_off_rgdp', self.rate_constants.k_sos_off_rgdp)
+
+        previous_product = self.cycle_3(i)
+        product_rd = previous_product + "_Ras_GDP"
+
+        add_new_monomer(product_rd)
+
+        Rule('{0}_bind'.format(product_rd),
+             eval('{0}()'.format(previous_product)) + Ras_GDP() | eval('{0}()'.format(product_rd)),
+             k_sos_on_rgdp, k_sos_off_rgdp)
+
+        product_rt = previous_product + "_Ras_GTP"
+
+        if i == "Ls":
+            Parameter('k_sos_on_rgtp', self.rate_constants.k_sos_on_rgtp)
+            Parameter('k_sos_off_rgtp', self.rate_constants.k_sos_off_rgtp)
+
+        add_new_monomer(product_rt)
+
+        Rule('{0}_bind'.format(product_rt),
+             eval('{0}()'.format(previous_product)) + Ras_GTP() | eval('{0}()'.format(product_rt)),
+             k_sos_on_rgtp, k_sos_off_rgtp)
+
+        return product_rd, product_rt
+
+    def add_step_10(self, i):
+        previous_product_rd, previous_product_rt = self.add_step_9(i)
+        product_rt_rd = previous_product_rt + "_Ras_GDP"
+
+        if i == "Ls":
+            Parameter('k_rgdp_on_sos_rgtp', self.rate_constants.k_rgdp_on_sos_rgtp)
+            Parameter('k_rgdp_off_sos_rgtp', self.rate_constants.k_rgdp_off_sos_rgtp)
+            Parameter('k_cat_3', self.rate_constants.k_cat_3)
+
+        add_new_monomer(product_rt_rd)
+
+        Rule('{0}_bind'.format(product_rt_rd),
+             eval('{0}()'.format(previous_product_rt)) + Ras_GDP() | eval('{0}()'.format(product_rt_rd)),
+             k_rgdp_on_sos_rgtp, k_rgdp_off_sos_rgtp)
+
+        Rule('{0}_cat'.format(product_rt_rd),
+             eval('{0}()'.format(product_rt_rd)) >> eval('{0}()'.format(previous_product_rt)) + Ras_GTP(),
+             k_cat_3)
+
+        product_rd_rd = previous_product_rd + "_Ras_GDP"
+
+        if i == "Ls":
+            Parameter('k_rgdp_on_sos_rgdp', self.rate_constants.k_rgdp_on_sos_rgdp)
+            Parameter('k_rgdp_off_sos_rgdp', self.rate_constants.k_rgdp_off_sos_rgdp)
+            Parameter('k_cat_4', self.rate_constants.k_cat_4)
+
+        add_new_monomer(product_rd_rd)
+
+        Rule('{0}_bind'.format(product_rd_rd),
+             eval('{0}()'.format(previous_product_rd)) + Ras_GDP() | eval('{0}()'.format(product_rd_rd)),
+             k_rgdp_on_sos_rgdp, k_rgdp_off_sos_rgdp)
+
+        Rule('{0}_cat'.format(product_rd_rd),
+             eval('{0}()'.format(product_rd_rd)) >> eval('{0}()'.format(previous_product_rd)) + Ras_GTP(),
+             k_cat_4)
+
+        # Deactivate - convert Ras_GTP to Ras_GDP
+
+        product = "Ras_GAP_Ras_GTP"
+        new_product = "Ras_GTP"
+
+        if i == "Ls":
+            Parameter('k_rgap_on_rgtp', self.rate_constants.k_rgap_on_rgtp)
+            Parameter('k_rgap_off_rgtp', self.rate_constants.k_rgap_off_rgtp)
+            Parameter('k_cat_5', self.rate_constants.k_cat_5)
+
+            add_new_monomer(product)
+
+            Rule('{0}_bind'.format(product),
+                 Ras_GAP() + Ras_GTP() | eval('{0}()'.format(product)),
+                 k_rgap_on_rgtp, k_rgap_off_rgtp)
+
+            add_observable(product)
+
+            Rule('{0}_cat'.format(product),
+                 eval('{0}()'.format(product)) >> Ras_GAP() + Ras_GDP(),
+                 k_cat_5)
+
+            add_observable(new_product)
+
+        return new_product
+
+    def make_model(self):
+
+        self.define_monomers()
+        self.define_rates()
+
+        observables = []
+        for i in self.output:
+            if self.steps == 0:
+                product = self.add_step_0(i)
+            elif self.steps == 1:
+                product = self.cycle_1(i)
+            elif self.steps == 2:
+                product = self.cycle_2(i)
+            elif self.steps == 3:
+                product = self.cycle_3(i)
+            else:
+                product = self.add_step_10(i)
+
+            if "O_{0}".format(product) not in observables:
+                observables.append("O_{0}".format(product))
+
+        return observables
+
 
 class LatPhosphorylationExtension(PysbTcrSelfWithForeign):
     def __init__(self, steps=8, self_foreign=False, lf=30):
@@ -642,7 +916,7 @@ class LatPhosphorylationExtension(PysbTcrSelfWithForeign):
             if self.p_flag:
                 Parameter('kp_on_lat1', self.parameters['kp_on_lat1'])
             else:
-                Parameter('kp_on_lat1', self.rate_constants.k_p_lat_on_species)
+                Parameter('kp_on_lat1', self.rate_constants.k_p_lat_2)
             Parameter('kp_off_lat1', self.rate_constants.k_p_lat_off_species)
 
         previous_product = self.cycle_6(i)
@@ -668,7 +942,7 @@ class LatPhosphorylationExtension(PysbTcrSelfWithForeign):
             if self.p_flag:
                 Parameter('kp_on_lat2', self.parameters['kp_on_lat2'])
             else:
-                Parameter('kp_on_lat2', self.rate_constants.k_p_lat_on_species)
+                Parameter('kp_on_lat2', self.rate_constants.k_p_lat_2)
             Parameter('kp_off_lat2', self.rate_constants.k_p_lat_off_species)
 
         previous_product = self.cycle_7(i)
@@ -721,56 +995,65 @@ class LatPhosphorylationExtension(PysbTcrSelfWithForeign):
 
 
 class PysbTcrLckFeedbackLoop(PysbTcrSelfWithForeign):
-    def __init__(self):
-        PysbTcrSelfWithForeign.__init__(self)
+    def __init__(self, steps=8, self_foreign=False, lf=30):
+        PysbTcrSelfWithForeign.__init__(self, steps=steps, self_foreign=self_foreign, lf=lf)
+
+    def inactive_lck_off(self, no_ligand_product, k_off="k_lck_off_R"):
+        new = no_ligand_product.replace("_LckI", "")
+        self.add_new_monomer(new)
+        Rule('{0}_unbindLckI'.format(no_ligand_product),
+             eval('{0}()'.format(no_ligand_product)) | eval('{0}()'.format(new)) + LckI(),
+             eval(k_off), k_lck_on_R)
+        return new
+
+    def add_negative_feedback(self):
+
+        if self.p_flag:
+            Parameter('k_lcki', self.parameters['k_lcki'])
+        else:
+            Parameter('k_lcki', self.rate_constants.k_lcki)
+
+        Rule('Neg_fb_2', LckI() >> Lck(), k_lcki)
 
     def cycle_4(self, i):
 
         if i == "Ls":
-            Parameter('k_p_on_zap_species', self.rate_constants.k_p_on_zap_species)
-            # Parameter('k_p_off_zap_species', self.rate_constants.k_p_off_zap_species)
+            if self.p_flag:
+                Parameter('k_p_on_zap_species', self.parameters['k_p_on_zap_species'])
+            else:
+                Parameter('k_p_on_zap_species', self.rate_constants.k_p_on_zap_species)
+
+            Parameter('k_p_off_zap_species', self.rate_constants.k_p_off_zap_species)
 
         previous_product = self.cycle_3(i)
-        product = "RP{0}_Zap_P".format(i)
+        product = "RP{0}_LckI_Zap_P".format(i)
         add_new_monomer(product)
 
-        Rule('{0}_cat'.format(product), eval('{0}()'.format(previous_product)) >> Lck() + eval('{0}()'.format(product)),
-             k_p_on_zap_species)
+        Rule('{0}_cat'.format(product), eval('{0}()'.format(previous_product)) | eval('{0}()'.format(product)),
+             k_p_on_zap_species, k_p_off_zap_species)
         add_observable(product)
 
         no_ligand = self.unbind_ligand(i, product)
 
         if i == "Ls":
-            self.dephosphorylate_zap(no_ligand)
+            no_lck = self.inactive_lck_off(no_ligand, k_off="k_lck_off_zap_R")
+            self.dephosphorylate_zap(no_lck)
 
         return product
-
-    def add_negative_feedback_loop(self, i):
-
-        if i == "Ls":
-            Parameter('k_negative_fb', self.rate_constants.k_negative_loop)
-            Parameter('k_lcki', 0.01)
-
-        previous_product = self.cycle_4(i)
-        product = "LckI"
-        add_new_monomer(product)
-
-        Rule('{0}_negfb'.format(previous_product), eval('{0}()'.format(previous_product)) + Lck() >> eval(
-            '{0}()'.format(product)) + eval('{0}()'.format(previous_product)), k_negative_fb)
-
-        if i == "Ls":
-            Rule('{0}_activate'.format(product), LckI() >> Lck(), k_lcki)
-
-        return previous_product
 
     def cycle_6(self, i):
 
         if i == "Ls":
-            Parameter('k_lat_on_species', self.rate_constants.k_lat_on_species)
+            if self.p_flag:
+                Parameter('k_lat_on_species', self.parameters['k_lat_on_species'])
+            else:
+                Parameter('k_lat_on_species', self.rate_constants.k_lat_on_species)
             Parameter('k_lat_off_species', self.rate_constants.k_lat_off_species)
 
-        previous_product = self.add_negative_feedback_loop(i)
-        product = "RP{0}_Zap_P_LAT".format(i)
+            add_new_monomer("LckI")
+
+        previous_product = self.cycle_4(i)
+        product = "RP{0}_LckI_Zap_P_LAT".format(i)
         add_new_monomer(product)
 
         Rule("{0}_bind".format(product), eval('{0}()'.format(previous_product)) + LAT() | eval('{0}()'.format(product)),
@@ -780,51 +1063,130 @@ class PysbTcrLckFeedbackLoop(PysbTcrSelfWithForeign):
         no_ligand = self.unbind_ligand(i, product)
 
         if i == "Ls":
-            no_zap_p = self.dephosphorylate_zap(no_ligand)
+            no_lck = self.inactive_lck_off(no_ligand, k_off="k_lck_off_zap_R")
+            no_zap_p = self.dephosphorylate_zap(no_lck)
             self.rp_zap_off(no_zap_p)
 
         return product
+
+    def cycle_7(self, i):
+
+        if i == "Ls":
+            if self.p_flag:
+                Parameter('kp_on_lat1', self.parameters['kp_on_lat1'])
+            else:
+                Parameter('kp_on_lat1', self.rate_constants.k_p_lat_1)
+            Parameter('kp_off_lat1', self.rate_constants.k_p_lat_off_species)
+
+        previous_product = self.cycle_6(i)
+        product = "RP{0}_LckI_Zap_P_LATP".format(i)
+        add_new_monomer(product)
+
+        Rule("{0}_bind".format(product), eval('{0}()'.format(previous_product)) | eval('{0}()'.format(product)),
+             kp_on_lat1, kp_off_lat1)
+        add_observable(product)
+
+        no_ligand = self.unbind_ligand(i, product)
+
+        if i == "Ls":
+            no_lck = self.inactive_lck_off(no_ligand, k_off="k_lck_off_zap_R")
+            no_zap_p = self.dephosphorylate_zap(no_lck)
+            no_latp = self.dephosphorylate_latp(no_zap_p)
+
+        return product
+
+    def step_8(self, i):
+        if i == "Ls":
+            if self.p_flag:
+                Parameter('k_p_lat_on_species', self.parameters['k_p_lat_on_species'])
+            else:
+                Parameter('k_p_lat_on_species', self.rate_constants.k_p_lat_2)
+
+        previous_product = self.cycle_7(i)
+        product = "LATPP"
+        if i == "Ls":
+            add_new_monomer(product)
+
+        Rule("{0}_cat".format(previous_product),
+             eval('{0}()'.format(previous_product)) >> eval('{0}()'.format("RP{0}_LckI_Zap_P".format(i))) + eval(
+                 '{0}()'.format(product)), k_p_lat_on_species)
+        if i == "Ls":
+            add_observable(product)
+
+            Rule("{0}_uncat".format(product), eval('{0}()'.format(product)) >> LAT(), k_p_off_R_pmhc)
+
+        return product
+
+    def make_model(self):
+
+        self.define_monomers()
+        self.define_rates()
+
+        observables = []
+        for i in self.output:
+            if self.steps == 0:
+                product = self.add_step_0(i)
+            elif self.steps == 1:
+                product = self.cycle_1(i)
+            elif self.steps == 2:
+                product = self.cycle_2(i)
+            elif self.steps == 3:
+                product = self.cycle_3(i)
+            elif self.steps == 4:
+                product = self.cycle_4(i)
+            elif self.steps == 5:
+                product = self.cycle_4(i)
+            elif self.steps == 6:
+                product = self.cycle_6(i)
+            elif self.steps == 7:
+                product = self.cycle_7(i)
+            else:
+                product = self.step_8(i)
+
+            if "O_{0}".format(product) not in observables:
+                observables.append("O_{0}".format(product))
+
+        # NEGATIVE FEEDBACK LOOP has been added here!!!!
+
+        if self.steps > 3:
+            self.add_negative_feedback()
+
+        return observables
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Submitting ode calculations as function of steps",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--steps', dest='steps', action='store', type=int, default=8, help="number of KP steps.")
+    parser.add_argument('--steps', dest='steps', action='store', type=int, help="number of KP steps.")
     parser.add_argument('--lf', dest='lf', action='store', type=int, help="Number of foreign ligands.")
-    parser.add_argument('--ssa', dest='ssa', action='store', type=int,
-                        help="Run SSA simulations. Specify amount of Ls.")
     parser.add_argument('--early_pos_fb', dest='early_pos_fb', action='store_true', default=False,
                         help='Flag for building and submitting early positive feedback loop.')
 
     args = parser.parse_args()
 
     if args.lf:
-        # if args.early_pos_fb:
-        #     tcr = EarlyPositiveFeedback(steps=args.steps, self_foreign=True, lf=args.lf)
-        #
-        # elif args.ssa:
-        #     tcr = PysbStochasticSimulations(args.ssa, steps=args.steps, self_foreign=True, lf=args.lf)
-        #
-        # else:
-        tcr = PysbTcrSelfWithForeign(steps=args.steps, self_foreign=True, lf=args.lf)
+        if args.early_pos_fb:
+            tcr = EarlyPositiveFeedback(steps=args.steps, self_foreign=True, lf=args.lf)
+
+        else:
+            tcr = PysbTcrSelfWithForeign(steps=args.steps, self_foreign=True, lf=args.lf)
 
     else:
-        # if args.early_pos_fb:
-        #     tcr = EarlyPositiveFeedback(steps=args.steps)
-        #
-        # elif args.ssa:
-        #     tcr = PysbStochasticSimulations(args.ssa, steps=args.steps)
-        #
-        # else:
-        tcr = PysbTcrSelfWithForeign(steps=args.steps)
+        if args.early_pos_fb:
+            tcr = EarlyPositiveFeedback(steps=args.steps)
+
+        else:
+            tcr = PysbTcrSelfWithForeign(steps=args.steps)
 
     tcr.main()
 
-# Uncomment to make reaction network
+## Uncomment to make reaction network
 
-# tcr = PysbTcrSelfWithForeign(steps=5, self_foreign=True)
-# tcr = LatPhosphorylationExtension(steps=7)
+# # tcr = PysbTcrSelfWithForeign(steps=8, self_foreign=True)
+# tcr = PysbTcrLckFeedbackLoop(steps=8, self_foreign=True)
+#
+# # tcr = LatPhosphorylationExtension(steps=7)
 # tcr.make_model()
 
 # tcr = PysbTcrCubicFbLoop(steps=8, self_foreign=True)
