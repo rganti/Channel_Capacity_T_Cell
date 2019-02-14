@@ -22,9 +22,9 @@ class DefineRegion(object):
 
 class InitialConcentrations(object):
     def __init__(self):
-        self.r_0 = 305  # 00
-        self.lck_0 = 305  # 00
-        self.zap_0 = 80000  # 00
+        self.r_0 = 30000
+        self.lck_0 = 30000
+        self.zap_0 = 1200000
 
         self.lat_0 = 150000
         self.sos_0 = 1000
@@ -39,12 +39,12 @@ class BindingParameters(object):
         self.initial = InitialConcentrations()
 
         # Zeroth Cycle ligand binding
-        self.k_L_on = 0.0052
+        self.k_L_on = 0.0022
         self.k_foreign_off = 0.2
         self.k_self_off = 2.0  # 10.0 * self.k_foreign_off
 
         # First Cycle Lck binding
-        self.on_rate = 2.0  # / 10.0
+        self.on_rate = 1.5  # / 10.0
 
         self.k_lck_on_R_pmhc = (self.on_rate / self.initial.lck_0)  # * 100.0
         self.k_lck_off_R_pmhc = self.k_foreign_off / 40.0
@@ -80,7 +80,7 @@ class BindingParameters(object):
         self.k_lck_off_zap_p = self.k_lck_off_zap_R
 
         # Fifth Negative Feedback Loop
-        self.k_negative_loop = 0.05  # 5.0
+        self.k_negative_loop = 0.0  # 5.0
         self.k_lcki = 0.01
 
         # Sixth LAT on
@@ -94,7 +94,7 @@ class BindingParameters(object):
         self.k_p_lat_1 = self.on_rate
 
         # Eighth second LAT phosphorylation
-        self.k_p_lat_on_species = self.on_rate / 10.0  # / 10.0  # self.k_p_on_zap_species / 100
+        self.k_p_lat_2 = self.on_rate / 10.0  # / 10.0  # self.k_p_on_zap_species / 100
         self.k_p_lat_off_species = self.k_p_off_R_pmhc
 
         self.k_p_on_lat = self.k_p_on_R
@@ -105,18 +105,19 @@ class BindingParameters(object):
         self.k_sos_off = 0.005
 
         self.multiplier = 10.0
+
         # Ninth Sos RasGDP and RasGTP
         self.k_sos_on_rgdp = 0.0024 * self.multiplier
         self.k_sos_off_rgdp = 3.0 * self.multiplier
 
-        self.k_sos_on_rgtp = 0.0022 * self.multiplier
+        self.k_sos_on_rgtp = 0.0022 * self.multiplier * 12.0
         self.k_sos_off_rgtp = 0.4 * self.multiplier
 
         # Tenth
         # sos_rgtp + rgdp
         self.k_rgdp_on_sos_rgtp = 0.001 * self.multiplier
         self.k_rgdp_off_sos_rgtp = 0.1 * self.multiplier
-        self.k_cat_3 = 0.038 * 0.9 * self.multiplier
+        self.k_cat_3 = 0.038 * 1.3 * self.multiplier
 
         # sos_rgdp + rgdp
         self.k_rgdp_on_sos_rgdp = 0.0014 * self.multiplier
