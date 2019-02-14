@@ -29,22 +29,8 @@ class TcrSelfWithForeign(object):
         self.forward_rxns = [[["R", "Lf"], ["C_RL"]], [["R", "Ls"], ["D_RL"]]]
         self.reverse_rxns = [[["C_RL"], ["R", "Lf"]], [["D_RL"], ["R", "Ls"]]]
 
-        self.mu = 6
-        self.sigma = 1.0
-        self.num_samples = self.set_num_samples()
-
-        self.p_ligand = [int(i) for i in np.round(np.random.lognormal(self.mu, self.sigma, self.num_samples))]
-
         self.num_kp_steps = 0
         self.output = ["C", "D"]
-
-    def set_num_samples(self):
-        if self.arguments.run:
-            num_samples = 1000
-        else:
-            num_samples = 2
-
-        return num_samples
 
     def change_ligand_concentration(self, concentration):
         self.n_initial["Ls"] = concentration
@@ -320,7 +306,7 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
         final_product = "RP{0}_Lck_Zap_P_LATP".format(i)
 
         self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LAT"], [final_product],
-                                    self.rate_constants.k_p_lat_on_species, self.rate_constants.k_p_lat_off_species)
+                                    self.rate_constants.k_p_lat_1, self.rate_constants.k_p_lat_off_species)
 
         no_ligand = self.ligand_off(final_product, i)
 
@@ -334,11 +320,22 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
         return final_product
 
+    def add_step_8(self):
+        final_product = "LATPP"
+        for i in self.output:
+            self.create_loop(["RP{0}_Lck_Zap_P_LATP".format(i)], ["RP{0}_Lck_Zap_P".format(i), final_product],
+                             self.rate_constants.k_p_lat_2)
+
+        self.create_loop([final_product], ["LAT"], self.rate_constants.k_p_lat_off_species)
+        self.record_append(final_product)
+
+        return final_product
+
     def cycle_8(self, i, count):
         final_product = "RP{0}_Lck_Zap_P_LATPP".format(i)
 
         self.modify_forward_reverse(["RP" + i + "_Lck_Zap_P_LATP"], [final_product],
-                                    self.rate_constants.k_p_lat_on_species, self.rate_constants.k_p_lat_off_species)
+                                    self.rate_constants.k_p_lat_2, self.rate_constants.k_p_lat_off_species)
 
         no_ligand = self.ligand_off(final_product, i)
 
@@ -352,29 +349,29 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
 
         return final_product
 
-    def add_step_7(self):
-        # self.increment_step()
-        final_product = "LATP"
-        for i in self.output:
-            self.create_loop(["RP" + i + "_Lck_Zap_P_LAT"], ["RP" + i + "_Lck_Zap_P", final_product],
-                             self.rate_constants.k_p_lat_on_species)
+    # def add_step_7(self):
+    #     # self.increment_step()
+    #     final_product = "LATP"
+    #     for i in self.output:
+    #         self.create_loop(["RP" + i + "_Lck_Zap_P_LAT"], ["RP" + i + "_Lck_Zap_P", final_product],
+    #                          self.rate_constants.k_p_lat_on_species)
+    #
+    #     self.create_loop([final_product], ["LAT"], self.rate_constants.k_p_lat_off_species)
+    #     self.record_append(final_product)
 
-        self.create_loop([final_product], ["LAT"], self.rate_constants.k_p_lat_off_species)
-        self.record_append(final_product)
-
-    def add_step_8(self):
-        # self.increment_step()
-        final_product = "Final_Product"
-        self.modify_forward_reverse(["LATP"], [final_product], self.rate_constants.k_product_on,
-                                    self.rate_constants.k_product_off)
-        self.record_append(final_product)
-
-        # self.increment_step()
-        # for i in self.output:
-        #     final_product = i + "_Product"
-        #     self.modify_forward_reverse([i + "_LATP"], [final_product], self.rate_constants.k_product_on,
-        #                                 self.rate_constants.k_product_off)
-        #     self.record_append(final_product)
+    # def add_step_8(self):
+    #     # self.increment_step()
+    #     final_product = "Final_Product"
+    #     self.modify_forward_reverse(["LATP"], [final_product], self.rate_constants.k_product_on,
+    #                                 self.rate_constants.k_product_off)
+    #     self.record_append(final_product)
+    #
+    #     # self.increment_step()
+    #     # for i in self.output:
+    #     #     final_product = i + "_Product"
+    #     #     self.modify_forward_reverse([i + "_LATP"], [final_product], self.rate_constants.k_product_on,
+    #     #                                 self.rate_constants.k_product_off)
+    #     #     self.record_append(final_product)
 
     def add_nonspecific_positive_fb(self):
         # self.increment_step()
@@ -397,6 +394,59 @@ class TcrCycleSelfWithForeign(TcrSelfWithForeign):
             if self.record_flag:
                 self.record_append(final_product)
             count += 1
+
+
+class ZapDissociation(TcrCycleSelfWithForeign):
+    def __init__(self, arguments=None):
+        TcrCycleSelfWithForeign.__init__(self, arguments=arguments)
+
+    def add_step_4(self):
+        final_product = "Zap_P"
+        for i in self.output:
+            self.create_loop(["RP{0}_Lck_Zap".format(i)], ["RP{0}_Lck".format(i), final_product],
+                             self.rate_constants.k_p_on_zap_species)
+
+        self.create_loop([final_product], ["Zap"], self.rate_constants.k_p_off_zap_species)
+        self.record_append(final_product)
+
+    def add_step_6(self):
+        final_product = "Zap_P_LAT"
+        self.modify_forward_reverse(["Zap_P", "LAT"], [final_product], self.rate_constants.k_lat_on_species,
+                                    self.rate_constants.k_lat_off_species)
+
+        self.create_loop([final_product], ["Zap_LAT"], self.rate_constants.k_p_off_R_pmhc)
+        self.create_loop(["Zap_LAT"], ["Zap", "LAT"], 20.0)
+        self.record_append(final_product)
+
+    def add_step_7(self):
+        final_product = "Zap_P_LATP"
+        self.modify_forward_reverse(["Zap_P_LAT"], [final_product], self.rate_constants.k_p_lat_1,
+                                    self.rate_constants.k_p_lat_off_species)
+        self.create_loop([final_product], ["Zap_LATP"], self.rate_constants.k_p_off_zap_species)
+        self.create_loop(["Zap_LATP"], ["Zap", "LATP"], 20.0)
+        self.create_loop(["LATP"], ["LAT"], self.rate_constants.k_p_lat_off_species)
+
+        self.record_append(final_product)
+
+    def add_step_8(self):
+        final_product = "Zap_P_LATPP"
+        self.modify_forward_reverse(["Zap_P_LATP"], [final_product], self.rate_constants.k_p_lat_2,
+                                    self.rate_constants.k_p_lat_off_species)
+        self.create_loop([final_product], ["Zap_LATPP"], self.rate_constants.k_p_off_zap_species)
+        self.create_loop(["Zap_LATPP"], ["Zap", "LATPP"], 20.0)
+        self.create_loop(["LATPP"], ["LAT"], self.rate_constants.k_p_lat_off_species)
+
+        self.record_append(final_product)
+
+
+class SelfZapDissociation(ZapDissociation):
+    def __init__(self, arguments=None):
+        ZapDissociation.__init__(self, arguments=arguments)
+
+        del self.n_initial['Lf']
+        self.n_initial["Ls"] = 1000
+        self.record = ["Ls"]
+        self.output = ["Ls"]
 
 
 class SscPositiveFbLoop(TcrCycleSelfWithForeign):
@@ -482,23 +532,37 @@ class KPRealistic(KPSingleSpecies):
 
         if self.self_foreign_flag:
             # self.ligand = SscPositiveFbLoop(arguments=arguments)
-            self.ligand = TcrCycleSelfWithForeign(arguments=arguments)
+            # self.ligand = TcrCycleSelfWithForeign(arguments=arguments)
+            self.ligand = ZapDissociation(arguments=arguments)
         else:
             # self.ligand = SelfSscPositiveFbLoop(arguments=arguments)
-            self.ligand = TcrCycleSelfLigand(arguments=arguments)
+            # self.ligand = TcrCycleSelfLigand(arguments=arguments)
+            self.ligand = SelfZapDissociation(arguments=arguments)
 
-        self.num_files = 100
-        self.run_time = 50
+        self.num_files = 200
+        self.run_time = 500
 
-        self.num_samples = 1
-        self.p_ligand = [100]  # , 100, 150]
+        self.mu = 6
+        self.sigma = 1.0
+        self.num_samples = self.set_num_samples()
 
-        # self.simulation_time = self.set_simulation_time()
+        self.p_ligand = [int(i) for i in np.round(np.random.lognormal(self.mu, self.sigma, self.num_samples))]
 
         self.file_list = []
 
-    def set_simulation_time(self):
-        simulation_time = self.run_time / 2  # * (200.0 / 1000)
+    def set_num_samples(self):
+        if self.arguments.run:
+            num_samples = 1000
+        else:
+            num_samples = 2
+
+        return num_samples
+
+    def set_simulation_time(self, ls=500):
+        if ls < 500:
+            simulation_time = 4.0
+        else:
+            simulation_time = 40.0
 
         return simulation_time
 
@@ -533,26 +597,34 @@ class KPRealistic(KPSingleSpecies):
             self.ligand.add_cycle(self.ligand.cycle_3)
         if self.arguments.steps > 3:
             self.ligand.add_step_4()
-            # self.ligand.add_cycle(self.ligand.cycle_4)
         if self.arguments.steps > 5:
-            self.ligand.add_cycle(self.ligand.cycle_6)
+            self.ligand.add_step_6()
         if self.arguments.steps > 6:
-            self.ligand.add_cycle(self.ligand.cycle_7)
+            self.ligand.add_step_7()
         if self.arguments.steps > 7:
-            self.ligand.add_cycle(self.ligand.cycle_8)
+            self.ligand.add_step_8()
+        # if self.arguments.steps > 3:
+        #     self.ligand.add_cycle(self.ligand.cycle_4)
+        # if self.arguments.steps > 5:
+        #     self.ligand.add_cycle(self.ligand.cycle_6)
+        # if self.arguments.steps > 6:
+        #     self.ligand.add_cycle(self.ligand.cycle_7)
+        # if self.arguments.steps > 7:
+        #     # self.ligand.add_cycle(self.ligand.cycle_8)
+        #     self.ligand.add_step_8()
 
     def main_script(self, run=False):
         sample = []
+        self.create_steps()
 
         for i in range(len(self.p_ligand)):
+            time.sleep(0.5)
             directory = "sample_" + str(i)
 
             s = self.p_ligand[i]
             sample.append(s)
             self.ligand.change_ligand_concentration(s)
             simulation_name = self.ligand.simulation_name
-
-            self.create_steps()
 
             self.file_list.append("{0}/mean_traj".format(directory))
 
@@ -561,7 +633,7 @@ class KPRealistic(KPSingleSpecies):
             os.chdir(directory)
             print("Changed into directory: " + str(os.getcwd()))
 
-            self.generate(simulation_name, self.set_time_step())
+            self.generate(simulation_name, self.set_time_step(), ls=s)
             if run:
                 (stdout, stderr) = subprocess.Popen(["qsub {0}".format("qsub.sh")], shell=True, stdout=subprocess.PIPE,
                                                     cwd=os.getcwd()).communicate()
@@ -596,7 +668,7 @@ if __name__ == "__main__":
                         help="number of KP steps.")
     parser.add_argument('--ls', action='store_true', default=False,
                         help="flag for submitting Ls calculations.")
-    parser.add_argument('--ls_lf', dest='ls_lf', action='store', type=int, default=3,
+    parser.add_argument('--ls_lf', dest='ls_lf', action='store', type=int, default=30,
                         help="number of foreign ligands.")
     args = parser.parse_args()
 
