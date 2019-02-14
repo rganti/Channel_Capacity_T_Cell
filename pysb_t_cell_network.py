@@ -1,3 +1,5 @@
+'''This script is the main one for generating all possible reactions of main T cell network using the PYSB package.'''
+
 import argparse
 import os
 import pickle
