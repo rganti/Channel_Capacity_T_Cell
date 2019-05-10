@@ -3,9 +3,11 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import iqr
 
 from post_process import load
+
+
+# from scipy.stats import iqr
 
 
 class InformationCapacity(object):
@@ -66,11 +68,11 @@ class InformationCapacity(object):
 
     def cn_mean_iqr(self):
         mean = np.mean(self.foreign_output)
-        cn_iqr = iqr(self.foreign_output)
+        # cn_iqr = iqr(self.foreign_output)
 
-        return mean, cn_iqr
+        return mean  # , cn_iqr
 
-    def plot_cn(self):
+    def plot_cn(self, plot_label=None):
         if os.path.exists(self.foreign_directory + "sample_0/column_names") or \
                 os.path.exists(self.foreign_directory + "column_names"):
             if len(self.foreign_column_names) > 1:
@@ -83,6 +85,10 @@ class InformationCapacity(object):
                 label = 'P(' + self.foreign_column_names[-1] + ')'
         else:
             label = 'P(C{0} + D{0})'.format(self.num_steps - 1)
+
+        if plot_label:
+            label = plot_label
+
         count, bins, _ = plt.hist(self.foreign_output, bins=self.bins, align='mid', normed=True,
                                   label=label)
 
@@ -96,15 +102,19 @@ class InformationCapacity(object):
 
     def dn_mean_iqr(self):
         mean = np.mean(self.self_output)
-        dn_iqr = iqr(self.self_output)
-        return mean, dn_iqr
+        # dn_iqr = iqr(self.self_output)
+        return mean  # , dn_iqr
 
-    def plot_dn(self):
+    def plot_dn(self, plot_label=None):
         if os.path.exists(self.self_directory + "sample_0/column_names") or \
                 os.path.exists(self.self_directory + "column_names"):
             label = 'P(' + self.self_column_names[-1] + ')'
         else:
             label = 'P(D{0})'.format(self.num_steps - 1)
+
+        if plot_label:
+            label = plot_label
+
         count, bins, _ = plt.hist(self.self_output, bins=self.bins, align='mid', normed=True,
                                   label=label)
 
@@ -153,17 +163,17 @@ class InformationCapacity(object):
             p_O = 0.5 * (count_cn + count_dn)
 
             p_0_integral = np.trapz(p_O, dx=bin_width)
-            # print("p(O) integral = " + str(p_0_integral))
+            print("p(O) integral = " + str(p_0_integral))
 
             term_1_c0 = 0.5 * count_cn * np.nan_to_num(np.log2(count_cn / p_O))
             term_2_d0 = 0.5 * count_dn * np.nan_to_num(np.log2(count_dn / p_O))
             C = np.trapz(term_1_c0 + term_2_d0, dx=bin_width)
-            # print("C = " + str(C))
+            print("C = " + str(C))
 
             if p_0_integral == C:
-                # print("C == P(O) integral: " + str(p_0_integral == C))
+                print("C == P(O) integral: " + str(p_0_integral == C))
                 C = 1.00
-                # print("New C " + str(C))
+                print("New C " + str(C))
                 break
 
             number_of_bins += 30
