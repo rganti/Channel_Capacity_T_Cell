@@ -918,7 +918,7 @@ class LatPhosphorylationExtension(PysbTcrSelfWithForeign):
             if self.p_flag:
                 Parameter('kp_on_lat1', self.parameters['kp_on_lat1'])
             else:
-                Parameter('kp_on_lat1', self.rate_constants.k_p_lat_2)
+                Parameter('kp_on_lat1', self.rate_constants.k_p_lat_1)
             Parameter('kp_off_lat1', self.rate_constants.k_p_lat_off_species)
 
         previous_product = self.cycle_6(i)
@@ -1164,6 +1164,8 @@ if __name__ == "__main__":
     parser.add_argument('--lf', dest='lf', action='store', type=int, help="Number of foreign ligands.")
     parser.add_argument('--early_pos_fb', dest='early_pos_fb', action='store_true', default=False,
                         help='Flag for building and submitting early positive feedback loop.')
+    parser.add_argument('--latpp_ext', dest='latpp_ext', action='store_true', default=False,
+                        help='Building network with latpp attached to TCR complex.')
 
     args = parser.parse_args()
 
@@ -1171,12 +1173,18 @@ if __name__ == "__main__":
         if args.early_pos_fb:
             tcr = EarlyPositiveFeedback(steps=args.steps, self_foreign=True, lf=args.lf)
 
+        elif args.latpp_ext:
+            tcr = LatPhosphorylationExtension(steps=args.steps, self_foreign=True, lf=args.lf)
+
         else:
             tcr = PysbTcrSelfWithForeign(steps=args.steps, self_foreign=True, lf=args.lf)
 
     else:
         if args.early_pos_fb:
             tcr = EarlyPositiveFeedback(steps=args.steps)
+
+        elif args.latpp_ext:
+            tcr = LatPhosphorylationExtension(steps=args.steps)
 
         else:
             tcr = PysbTcrSelfWithForeign(steps=args.steps)
