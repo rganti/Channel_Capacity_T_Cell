@@ -44,7 +44,7 @@ class BindingParameters(object):
         self.k_self_off = 2.0  # 10.0 * self.k_foreign_off
 
         # First Cycle Lck binding
-        self.on_rate = 1.5  # / 10.0
+        self.on_rate = 2.0  # / 10.0
 
         self.k_lck_on_R_pmhc = (self.on_rate / self.initial.lck_0)  # * 100.0
         self.k_lck_off_R_pmhc = self.k_foreign_off / 40.0
@@ -53,7 +53,7 @@ class BindingParameters(object):
         self.k_lck_off_R = 20.0
 
         # Second Cycle Lck phosphorylation
-        self.k_p_on_R_pmhc = self.on_rate
+        self.k_p_on_R_pmhc = self.on_rate / 10.0
         self.k_p_off_R_pmhc = self.k_foreign_off / 40.0  # self.k_foreign_off / 10.0
 
         self.k_lck_on_RP = 1.0 / 100000.0
@@ -94,7 +94,7 @@ class BindingParameters(object):
         self.k_p_lat_1 = self.on_rate
 
         # Eighth second LAT phosphorylation
-        self.k_p_lat_2 = self.on_rate / 10.0  # / 10.0  # self.k_p_on_zap_species / 100
+        self.k_p_lat_2 = self.on_rate  # / 10.0  # / 10.0  # self.k_p_on_zap_species / 100
         self.k_p_lat_off_species = self.k_p_off_R_pmhc
 
         self.k_p_on_lat = self.k_p_on_R
@@ -110,7 +110,7 @@ class BindingParameters(object):
         self.k_sos_on_rgdp = 0.0024 * self.multiplier
         self.k_sos_off_rgdp = 3.0 * self.multiplier
 
-        self.k_sos_on_rgtp = 0.0022 * self.multiplier * 12.0
+        self.k_sos_on_rgtp = 0.0022 * self.multiplier  # * 12.0
         self.k_sos_off_rgtp = 0.4 * self.multiplier
 
         # Tenth
