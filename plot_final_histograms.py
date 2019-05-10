@@ -1,6 +1,9 @@
 import argparse
 import os
 
+import matplotlib
+
+matplotlib.use('agg')
 import matplotlib.pyplot as plt
 
 from compute_ic import InformationCapacity
