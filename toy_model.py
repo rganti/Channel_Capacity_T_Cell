@@ -4,7 +4,10 @@ import numpy as np
 from pysb import *
 from pysb.integrate import odesolve
 
-from pysb_t_cell_network import write_columns, write_model_attributes
+from pysb_t_cell_network import write_model_attributes
+
+parameters = {'kp': 0.1, 'koff': 0.05, 'koffs': 0.05, 'kon': 0.0022, 'kons': 0.001, 'kf': 0.2,
+              'R': 100000, 'lfT': 10.0, 'M': 20, 'St': 10000}
 
 
 class NewBindingParameters(object):
@@ -18,19 +21,19 @@ class NewBindingParameters(object):
 
 
 class ToyModel(object):
-    def __init__(self, self_foreign=False):
-        self.rate_constants = NewBindingParameters()
+    def __init__(self, ks_multiplier=5.0, self_foreign=False):
 
-        self.steps = 3
+        self.steps = 4
         self.model = Model()
         self.self_foreign = self_foreign
+        self.ks_multiplier = ks_multiplier
 
         if self.self_foreign:
             self.output = ["Ls", "Lf"]
         else:
             self.output = ["Ls"]
 
-        self.mu = 5.0
+        self.mu = 6.0
         self.sigma = 1.0
         self.num_samples = 1000
 
@@ -43,16 +46,19 @@ class ToyModel(object):
         Monomer('R')
         Monomer('Ls')
         Monomer('Lf')
+        Monomer('S')
 
-        Parameter('R_0', 10000)
+        Parameter('R_0', parameters['R'])
         self.add_observable('R')
 
         Parameter('Ls_0', 30)
-        Parameter('Lf_0', 30)
+        Parameter('Lf_0', parameters['lfT'])
+        Parameter('S_0', parameters['St'])
 
         Initial(R(), R_0)
         Initial(Ls(), Ls_0)
         Initial(Lf(), Lf_0)
+        Initial(S(), S_0)
 
     def add_new_monomer(self, product):
         try:
@@ -65,11 +71,13 @@ class ToyModel(object):
         Observable("O_{0}".format(species), eval('{0}()'.format(species)))
 
     def define_rates(self):
-        Parameter('k_L_on', self.rate_constants.k_L_on)
-        Parameter('k_Lf_off', self.rate_constants.k_foreign_off)
-        Parameter('k_Ls_off', self.rate_constants.k_self_off)
-        Parameter('kp', self.rate_constants.kp)
-        Parameter('k_off', self.rate_constants.k_off)
+        Parameter('k_L_on', parameters['kon'])
+        Parameter('k_Lf_off', parameters['kf'])
+        Parameter('k_Ls_off', self.ks_multiplier * parameters['kf'])
+        Parameter('kp', parameters['kp'])
+        Parameter('koff', parameters['koff'])
+        Parameter('kons', parameters['kons'])
+        Parameter('koffs', parameters['koffs'])
 
     def add_step_0(self, i):
         product = "R{0}".format(i)
@@ -82,6 +90,15 @@ class ToyModel(object):
         self.add_observable(product)
         return product
 
+    def add_phosphorylation_steps(self, i):
+        previous_product = self.add_step_0(i)
+        for k in range(1, self.steps + 1):
+            product = "RP{0}{1}".format(k, i)
+            self.add_cycle(i, previous_product, product)
+            previous_product = product
+
+        return previous_product
+
     def add_cycle(self, i, previous_product, product):
         self.add_new_monomer(product)
 
@@ -92,56 +109,82 @@ class ToyModel(object):
         Rule('{0}_return'.format(product), eval('{0}()'.format(product)) >> R() + eval('{0}()'.format(i)),
              eval('k_{0}_off'.format(i)))
 
-    def cycle_1(self, i):
-        previous_product = self.add_step_0(i)
-        product = "RP1{0}".format(i)
-        self.add_cycle(i, previous_product, product)
-
-        return product
-
-    def cycle_2(self, i):
-        previous_product = self.cycle_1(i)
-        product = "RP2{0}".format(i)
-        self.add_cycle(i, previous_product, product)
-
-        return product
-
-    def cycle_3(self, i):
-        previous_product = self.cycle_2(i)
-        product = "RP3"
-
+    def add_ligand_dissociation_step(self, i):
+        previous_product = self.add_phosphorylation_steps(i)
+        product = "RP{0}".format(self.steps + 1)
         self.add_new_monomer(product)
 
-        Rule('{0}_{1}_bind'.format(product, i),
+        Rule('{0}_unbind'.format(previous_product),
              eval('{0}()'.format(previous_product)) >> eval('{0}()'.format(product)) + eval('{0}()'.format(i)), kp)
-
-        if i == "Ls":
-            self.add_observable(product)
-            Rule('{0}_return'.format(product), eval('{0}()'.format(product)) >> R(),
-                 eval('k_off'))
-
         return product
+
+    def add_catalysis_step(self, product):
+        self.add_new_monomer('{0}S'.format(product))
+
+        Rule('{0}_bind'.format(product), eval('{0}()'.format(product)) + eval('S()') | eval('{0}S()'.format(product)),
+             kons, koffs)
+
+        self.add_new_monomer('SP')
+        Rule('{0}_catalysis'.format(product),
+             eval('{0}S()'.format(product)) >> eval('{0}()'.format(product)) + eval('SP()'), kp)
+
+        self.add_observable('SP')
+
+        Rule('{0}_dissociate'.format('SP'), eval('SP()') >> eval('S()'), koff)
+
+        Rule('{0}_dissociate'.format(product), eval('{0}()'.format(product)) >> eval('R()'), koff)
+
+    # def cycle_1(self, i):
+    #     previous_product = self.add_step_0(i)
+    #     product = "RP1{0}".format(i)
+    #     self.add_cycle(i, previous_product, product)
+    #
+    #     return product
+    #
+    # def cycle_2(self, i):
+    #     previous_product = self.cycle_1(i)
+    #     product = "RP2{0}".format(i)
+    #     self.add_cycle(i, previous_product, product)
+    #
+    #     return product
+    #
+    # def cycle_3(self, i):
+    #     previous_product = self.cycle_2(i)
+    #     product = "RP3"
+    #
+    #     self.add_new_monomer(product)
+    #
+    #     Rule('{0}_{1}_bind'.format(product, i),
+    #          eval('{0}()'.format(previous_product)) >> eval('{0}()'.format(product)) + eval('{0}()'.format(i)), kp)
+    #
+    #     if i == "Ls":
+    #         self.add_observable(product)
+    #         Rule('{0}_return'.format(product), eval('{0}()'.format(product)) >> R(),
+    #              eval('k_off'))
+    #
+    #     return product
 
     def make_model(self):
 
         self.define_monomers()
         self.define_rates()
 
-        observables = []
         for i in self.output:
-            if self.steps == 0:
-                product = self.add_step_0(i)
-            elif self.steps == 1:
-                product = self.cycle_1(i)
-            elif self.steps == 2:
-                product = self.cycle_2(i)
-            else:
-                product = self.cycle_3(i)
+            product = self.add_ligand_dissociation_step(i)
 
-            if "O_{0}".format(product) not in observables:
-                observables.append("O_{0}".format(product))
+        self.add_catalysis_step(product)
 
-        return observables
+        # if self.steps == 0:
+        #     product = self.add_step_0(i)
+        # elif self.steps == 1:
+        #     product = self.cycle_1(i)
+        # elif self.steps == 2:
+        #     product = self.cycle_2(i)
+        # else:
+        #     product = self.cycle_3(i)
+
+        # if "O_{0}".format(product) not in observables:
+        #     observables.append("O_{0}".format(product))
 
     def main(self):
         output_array = []
@@ -150,9 +193,8 @@ class ToyModel(object):
         r_ss_array = []
         lf_ss_array = []
 
-        observables = self.make_model()
+        self.make_model()
 
-        write_columns(observables)
         write_model_attributes(self.model.rules, "rules")
         write_model_attributes(self.model.parameters, "parameters")
         write_model_attributes(self.model.observables, "observables")
@@ -165,7 +207,7 @@ class ToyModel(object):
 
             y = odesolve(self.model, self.tspan, compiler="python")
 
-            output = y[observables[0]]
+            output = y['O_SP']
             ls_ss = y['O_Ls']
             r_ss = y['O_R']
 
