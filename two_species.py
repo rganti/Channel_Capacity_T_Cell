@@ -43,6 +43,7 @@ class TwoSpecies(object):
 
         self.simulation_name = "two_species_A_B"
         self.num_files = 50
+        self.run_time = 100
         self.time_step = 0.1
 
     def define_rxns(self, f):
@@ -68,12 +69,14 @@ class TwoSpecies(object):
         q.write("#PBS -l walltime=00:02:00,nodes=1:ppn=1 -N {0}\n\n".format(self.simulation_name))
         q.write("cd $PBS_O_WORKDIR\n\n")
         q.write("EXE_FILE={0}\n".format(self.simulation_name))
-        q.write("RUN_TIME={0}\n".format(self.num_files))
+        q.write("RUN_TIME={0}\n".format(self.run_time))
         q.write("STEP={0}\n\n".format(self.time_step))
         q.write("for j in {1.." + str(self.num_files) + "}\n")
         q.write("do\n")
         q.write("\t ./$EXE_FILE -e $RUN_TIME -t $STEP > traj_$j\n")
         q.write("done\n")
+        q.write("wait \n")
+        q.write("python ~/SSC_python_modules/post_process.py --run_time $RUN_TIME --time_step $STEP\n")
 
 
 class TwoWay(object):
@@ -471,26 +474,32 @@ if __name__ == "__main__":
                         help="flag for checking if sims approach steady-state.")
     args = parser.parse_args()
 
-    if "Ls_Lf" in os.getcwd():
-        kp = KPSingleSpecies(self_foreign=True, arguments=args)
-    elif "Lf" in os.getcwd():
-        kp = KPSingleSpecies(foreign=True, arguments=args)
-    elif "Ls" in os.getcwd():
-        kp = KPSingleSpecies()
-    else:
-        raise Exception("Incorrect Directory labeling. Specify (Ls, Lf, Ls_Lf)")
+    two_species = TwoSpecies()
 
-    # kp.add_step()
-    # kp.add_step()
+    two_species.generate_script()
+    compile_script(two_species.script_name)
+    two_species.generate_qsub()
 
-    kp.ligand.add_step_1()
-    # kp.ligand.add_step_2()
-    # kp.ligand.add_step_3()
-    # kp.ligand.add_step_4()
-    # kp.ligand.add_step_5()
-    # kp.ligand.add_step_6()
-    # kp.ligand.add_step_7()
-    # kp.ligand.add_step_8()
-    # kp.ligand.add_step_9()
-
-    kp.main_script(run=args.run)
+    # if "Ls_Lf" in os.getcwd():
+    #     kp = KPSingleSpecies(self_foreign=True, arguments=args)
+    # elif "Lf" in os.getcwd():
+    #     kp = KPSingleSpecies(foreign=True, arguments=args)
+    # elif "Ls" in os.getcwd():
+    #     kp = KPSingleSpecies()
+    # else:
+    #     raise Exception("Incorrect Directory labeling. Specify (Ls, Lf, Ls_Lf)")
+    #
+    # # kp.add_step()
+    # # kp.add_step()
+    #
+    # kp.ligand.add_step_1()
+    # # kp.ligand.add_step_2()
+    # # kp.ligand.add_step_3()
+    # # kp.ligand.add_step_4()
+    # # kp.ligand.add_step_5()
+    # # kp.ligand.add_step_6()
+    # # kp.ligand.add_step_7()
+    # # kp.ligand.add_step_8()
+    # # kp.ligand.add_step_9()
+    #
+    # kp.main_script(run=args.run)
