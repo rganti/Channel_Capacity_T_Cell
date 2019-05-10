@@ -60,7 +60,7 @@ def average_trajectories(num_files, run_time, time_step):
             all_data += [array]
         elif run_time/time_step == 1:
             all_data += [array]
-        os.remove("hashed_traj_{0}".format(i))
+        # os.remove("hashed_traj_{0}".format(i))
 
     np_all_data = np.array(all_data)
     print(np_all_data.shape)
