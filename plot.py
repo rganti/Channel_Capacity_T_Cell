@@ -31,7 +31,7 @@ class PlotTwoSpecies(object):
         plt.plot(self.data[:, 0], self.data[:, 2]/(self.A_0 + self.B_0), label="B", linestyle='-', marker='o')
 
     def plot_analytical(self):
-        x = np.linspace(0,50,500)
+        x = np.linspace(0, 100, 500)
         A = (self.A_0 * ((self.beta/(self.alpha + self.beta)) + (self.alpha/(self.alpha + self.beta)) * np.exp(-(self.alpha + self.beta) * x)) +\
             self.B_0 * ((self.beta/(self.alpha + self.beta)) - (self.beta/(self.alpha + self.beta)) * np.exp(-(self.alpha + self.beta) * x)))/(self.A_0 + self.B_0)
         plt.plot(x, A, label="A analytical", linestyle='--')
@@ -136,15 +136,15 @@ class PlotSecondOrder(object):
         plt.plot(self.time[-index:], self.data[-index:, -1], label=self.column_names[-1], linestyle='-', marker='o')
         plt.plot(self.time[-index:], self.data[-index:, -2], label=self.column_names[-2], linestyle='-', marker='o')
 
-    def plot_analytical(self):
-        Lf = self.second_order.n_initial["Lf"]
-        R = self.second_order.n_initial["R"]
-        kappa = self.second_order.rate_constants.kappa
-        k_off = self.second_order.rate_constants.k_off_foreign
-
-        c_o = 0.5 * (-np.sqrt((-Lf - R - (k_off/kappa))**(2) - 4*Lf*R) + Lf + R + (k_off/kappa))
-        print("c_o = " + str(c_o))
-        plt.plot(self.time, np.zeros_like(self.time) + c_o, label="analytical C0", linestyle='-')
+    # def plot_analytical(self):
+    #     Lf = self.second_order.n_initial["Lf"]
+    #     R = self.second_order.n_initial["R"]
+    #     kappa = self.second_order.rate_constants.kappa
+    #     k_off = self.second_order.rate_constants.k_off_foreign
+    #
+    #     c_o = 0.5 * (-np.sqrt((-Lf - R - (k_off/kappa))**(2) - 4*Lf*R) + Lf + R + (k_off/kappa))
+    #     print("c_o = " + str(c_o))
+    #     plt.plot(self.time, np.zeros_like(self.time) + c_o, label="analytical C0", linestyle='-')
 
     def save_plot(self):
         self.plot_concentrations()
@@ -278,12 +278,15 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    two_species = PlotTwoSpecies("mean_traj")
+    two_species.save_plot()
+
     # plotkp = PlotKP("mean_traj", args.steps)
     # plotkp.error_fraction()
     # plotkp.save_plot()
 
-    second_order = PlotSecondOrder()
-    second_order.save_plot()
+    # second_order = PlotSecondOrder()
+    # second_order.save_plot()
 
 
     # mutual_information = MutualInformationAlternate(plotkp, save=args.save)
