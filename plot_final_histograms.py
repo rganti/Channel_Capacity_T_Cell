@@ -30,11 +30,16 @@ if __name__ == "__main__":
     ic_lf.plot_cn()
     ic_lf.plot_dn()
 
-    plt.legend()
+    plt.xlabel("Concentration of Signaling Output", size=15)
+    plt.ylabel("Likelihood", size=15)
+    # plt.tick_params(labelsize=15)
+    plt.legend(prop={'size': 15})
 
     if args.xlo and args.xhi:
         plt.xlim(args.xlo, args.xhi)
 
-    plt.title("{:.0f} Steps: C = {:.3f}".format(steps, ic_lf.capacity))
+    steps = 7
+    plt.title("{:.0f} Signaling Steps: C = {:.3f}".format(steps, ic_lf.capacity) + ", $k_{latpp} = 1.0 s^{-1}$",
+              size=15)
     # plt.title("10 Steps: C = {:.3f}".format(ic_lf.calculate_ic()))
     plt.savefig("histograms.pdf", format="pdf")
