@@ -12,7 +12,7 @@ from post_process import load
 
 class InformationCapacity(object):
 
-    def __init__(self, self_directory="./", foreign_directory="./", estimator='fd', limiting='foreign'):
+    def __init__(self, foreign_directory="./", self_directory="./", estimator='fd', limiting='foreign'):
         self.num_steps = 1
         self.foreign_directory = foreign_directory
         self.self_directory = self_directory
@@ -176,7 +176,7 @@ class InformationCapacity(object):
                 print("New C " + str(C))
                 break
 
-            number_of_bins += 30
+            number_of_bins += 50
 
         return C, number_of_bins, p_0_integral
 
