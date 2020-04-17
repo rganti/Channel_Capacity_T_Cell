@@ -6,8 +6,8 @@ from pysb.integrate import odesolve
 
 from pysb_t_cell_network import write_model_attributes
 
-parameters = {'kp': 0.1, 'koff': 0.05, 'koffs': 0.05, 'kon': 0.0022, 'kons': 0.001, 'kf': 0.2,
-              'R': 100000, 'lfT': 10.0, 'M': 20, 'St': 10000}
+parameters = {'kp': 0.1, 'koff': 0.05, 'koffs': 0.05, 'kon': 0.0022, 'kons': 0.1, 'kf': 0.2,
+              'R': 30000.0, 'lfT': 10.0, 'M': 15, 'St': 10000.0}
 
 
 class NewBindingParameters(object):
