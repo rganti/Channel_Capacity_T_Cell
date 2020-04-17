@@ -39,8 +39,9 @@ class InformationCapacity(object):
             self.self_column_names = self.self_column[0].split()
 
         self.estimator = estimator
-        self.capacity, self.number_of_bins, self.p0_integral = self.calculate_ic()
-        self.bins = self.calculate_bins(num_bins=self.number_of_bins)
+        # self.capacity, self.number_of_bins, self.p0_integral = self.calculate_ic()
+        self.capacity = self.calculate_ic()
+        # self.bins = self.calculate_bins(num_bins=self.number_of_bins)
 
     def calculate_bins(self, num_bins=100):
         count, self_bins = np.histogram(self.self_output, bins=self.estimator, density=True)
@@ -178,7 +179,7 @@ class InformationCapacity(object):
 
             number_of_bins += 50
 
-        return C, number_of_bins, p_0_integral
+        return C  # , number_of_bins, p_0_integral
 
     def alternate_calculate_ic(self):
         bins = self.calculate_bins(num_bins=500)
