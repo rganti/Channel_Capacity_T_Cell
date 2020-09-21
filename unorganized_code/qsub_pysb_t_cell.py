@@ -145,7 +145,7 @@ if __name__ == "__main__":
     home_directory = os.getcwd()
 
     for directory in sub_directories:
-        if directory in os.listdir("."):
+        if directory in os.listdir(".."):
             continue
 
         make_and_cd(directory)

@@ -51,7 +51,7 @@ class PostProcess(object):
 
 def average_trajectories(num_files, run_time, time_step):
     all_data = []
-    num_files = len([name for name in os.listdir(".") if "hashed" in name])
+    num_files = len([name for name in os.listdir("..") if "hashed" in name])
     print(num_files)
     for i in range(1, num_files):
         array = np.loadtxt("hashed_traj_{0}".format(i))
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     post_process = PostProcess("traj_1")
     post_process.write_columns()
 
-    num_files = len([name for name in os.listdir(".") if "traj" in name])
+    num_files = len([name for name in os.listdir("..") if "traj" in name])
     for i in range(num_files - 1):
        post_process = PostProcess("traj_{0}".format(i+1))
        post_process.main()

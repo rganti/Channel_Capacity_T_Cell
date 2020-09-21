@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     steps = [int(s) for s in os.path.basename(os.getcwd()) if s.isdigit()][0]
-    foreign_directory = [d for d in os.listdir(".") if 'Ls_Lf' in d][0]
+    foreign_directory = [d for d in os.listdir("..") if 'Ls_Lf' in d][0]
 
     ic_lf = InformationCapacity(foreign_directory=foreign_directory + "/",
                                 self_directory="Ls/",
