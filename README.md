@@ -1,5 +1,5 @@
-==============================
-Channel Capacity of T cells
+==============================  
+Channel Capacity of T cells  
 ==============================
 
 This project aims to compute the channel capacity of the T cell signaling network within the context of 
