@@ -30,6 +30,7 @@ Neg_Fb_Parameter_Search.ipynb
 data/processed/Late_Negative_Fb/  
 data/processed/Positive_Fb_Loop_New_Model/
 
+Questions? Email me at rganti(at)mit.edu
 
 Project Organization
 ------------
