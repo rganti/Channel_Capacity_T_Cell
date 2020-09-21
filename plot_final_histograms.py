@@ -26,22 +26,22 @@ if __name__ == "__main__":
     ic_lf = InformationCapacity(foreign_directory=foreign_directory + "/",
                                 self_directory="Ls/",
                                 limiting="self")
-    print("num_bins = " + str(ic_lf.number_of_bins))
+    # print("num_bins = " + str(ic_lf.number_of_bins))
     ic_lf.plot_cn()
     ic_lf.plot_dn()
 
     plt.xlabel("Concentration of Signaling Output", size=15)
-    plt.ylabel("Likelihood", size=15)
+    plt.ylabel("Likelihood", size=20)
     # plt.tick_params(labelsize=15)
-    plt.legend(prop={'size': 10})
+    plt.legend(prop={'size': 18})
 
     if args.xlo and args.xhi:
         plt.xlim(args.xlo, args.xhi)
 
-    steps = 6
+    steps = 1
     # plt.title("{:.0f} Signaling Steps: C = {:.3f}".format(steps, ic_lf.capacity) + ", $k_{latpp} = 1.0 s^{-1}$",
     #           size=15)
-    plt.title("{:.0f} Signaling Steps: C = {:.3f}".format(steps, ic_lf.capacity), size=20)
+    plt.title("{:.0f} Signaling Step: C = {:.3f}".format(steps, ic_lf.capacity), size=20)
     plt.tight_layout()
     # plt.title("10 Steps: C = {:.3f}".format(ic_lf.calculate_ic()))
     plt.savefig("histograms_{:.0f}.pdf".format(steps), format="pdf")
