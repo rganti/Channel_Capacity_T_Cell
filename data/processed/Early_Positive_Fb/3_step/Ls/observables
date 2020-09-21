@@ -1,6 +1,0 @@
-Observable('O_Ls', Ls()) 
-Observable('O_RLs', RLs()) 
-Observable('O_RLs_Lck', RLs_Lck()) 
-Observable('O_RPLs_Lck', RPLs_Lck()) 
-Observable('O_RPLs_Lck_Zap', RPLs_Lck_Zap()) 
-
