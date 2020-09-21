@@ -1,0 +1,5 @@
+-bash: BASH_FUNC_module(): line 0: syntax error near unexpected token `)'
+-bash: BASH_FUNC_module(): line 0: `BASH_FUNC_module() () {  eval `/usr/bin/modulecmd bash $*`'
+-bash: error importing function definition for `BASH_FUNC_module'
+/mit/rganti/.pkg/anaconda2/lib/python2.7/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters

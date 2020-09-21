@@ -1,0 +1,3 @@
+Rule('RLs_bind', R() + Ls() | RLs(), k_L_on, k_Ls_off) 
+Rule('RLf_bind', R() + Lf() | RLf(), k_L_on, k_Lf_off) 
+
