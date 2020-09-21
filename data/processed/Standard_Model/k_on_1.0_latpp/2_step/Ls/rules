@@ -1,0 +1,9 @@
+Rule('RLs_bind', R() + Ls() | RLs(), k_L_on, k_Ls_off) 
+Rule('RLs_Lck_bind', RLs() + Lck() | RLs_Lck(), k_lck_on_RL, k_lck_off_RL) 
+Rule('RLs_Lck_unbindL', RLs_Lck() | Ls() + R_Lck(), k_Ls_off, k_L_on) 
+Rule('R_Lck_unbindLck', R_Lck() | R() + Lck(), k_lck_off_R, k_lck_on_R) 
+Rule('RPLs_Lck_cat', RLs_Lck() | RPLs_Lck(), k_p_on_R_pmhc, k_p_off_R_pmhc) 
+Rule('RPLs_Lck_unbindL', RPLs_Lck() | Ls() + RP_Lck(), k_Ls_off, k_L_on) 
+Rule('RP_Lck_unbindLck', RP_Lck() | RP() + Lck(), k_lck_off_R, k_lck_on_R) 
+Rule('RP_uncat', RP() | R(), k_p_off_R, k_p_on_R) 
+
