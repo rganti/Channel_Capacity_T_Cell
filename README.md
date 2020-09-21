@@ -10,6 +10,28 @@ All chemical reactions are solved using a system of ordinary differential equati
 (Systems biology modeling in Python) package. Reactions can also be solved using stochastic simulation algorithms 
 (Gillespie).
 
+
+Data
+----
+All processed data is located in /data/processed/. Plots shown in the main text can be reproduced using the jupyter notebooks
+in the respective folders.
+
+Data and plots for histograms shown in Figure 1C is located in:  
+data/processed/LATP_Extension/latpp_k_on_2/1_step  
+data/processed/LATP_Extension/latpp_k_on_2/4_step  
+data/processed/LATP_Extension/latpp_k_on_2/7_step  
+
+Data and plotting for Figure 2 is located in:    
+data/processed/LATP_Extension/latpp_k_on_2/   
+Slow_Early_Step_Bound_LATPP.ipynb   
+
+Data and plots for Figure 5 is located in:    
+data/processed/New_Negative_Fb_Param_Search/  
+Neg_Fb_Parameter_Search.ipynb  
+data/processed/Late_Negative_Fb/  
+data/processed/Positive_Fb_Loop_New_Model/
+
+
 Project Organization
 ------------
 
