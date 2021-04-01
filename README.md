@@ -15,6 +15,9 @@ Data
 All processed data is located in /data/processed/. Plots shown in the main text can be reproduced using the jupyter notebooks
 in the respective folders.
 
+Simulation data on lc2:
+/mit/rganti/New_Pysb_Simulations/
+
 Data and plots for histograms shown in Figure 1C is located in:  
 data/processed/LATP_Extension/latpp_k_on_2/1_step  
 data/processed/LATP_Extension/latpp_k_on_2/4_step  
